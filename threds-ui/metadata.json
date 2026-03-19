@@ -1,0 +1,5 @@
+{
+  "name": "Threds",
+  "description": "A minimalist image board. Create threds, upload images, and discuss topics anonymously.",
+  "requestFramePermissions": []
+}

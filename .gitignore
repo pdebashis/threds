@@ -1,0 +1,53 @@
+# Top-level .gitignore for workspace containing both Rails app and Vite/React app
+
+# ---------------------------------
+# Common editor/OS files
+# ---------------------------------
+.DS_Store
+Thumbs.db
+/.vscode/
+/.idea/
+*.swp
+*~
+
+# ---------------------------------
+# Rails (threds-api)
+# ---------------------------------
+/threds-api/log/
+/threds-api/tmp/
+/threds-api/.bundle/
+/threds-api/vendor/bundle/
+/threds-api/storage/
+/threds-api/public/packs-test/
+/threds-api/public/packs/
+/threds-api/node_modules/
+/threds-api/yarn-error.log
+/threds-api/yarn-debug.log*
+
+# Ignore Rails credentials / secrets
+/threds-api/config/credentials.yml.enc
+/threds-api/config/master.key
+
+# ---------------------------------
+# Vite + React (threds-ui)
+# ---------------------------------
+/threds-ui/node_modules/
+/threds-ui/dist/
+/threds-ui/.vite/
+/threds-ui/build/
+/threds-ui/tsconfig.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---------------------------------
+# Other
+# ---------------------------------
+.env
+.env.*
+
+# Ignore local .env files or other local config
+
