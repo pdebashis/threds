@@ -12,16 +12,23 @@ interface RouteState {
   activeThreadId?: string;
 }
 
+const normalizePath = (raw: string) => {
+  // Accept both path-based routes (/board/...) and hash-based routes (/#/board/...)
+  // Strip leading hashes and leading/trailing slashes.
+  return raw.replace(/^#\/?/, '').replace(/^\/\+|\/\+$/g, '');
+};
+
 const parseUrlRoute = (): RouteState => {
-  const path = window.location.pathname;
-  
-  // Remove leading/trailing slashes
+  const hash = window.location.hash;
+  const raw = hash.startsWith('#') ? hash.slice(1) : window.location.pathname;
+  const path = normalizePath(raw);
+
   const segments = path.split('/').filter(Boolean);
-  
+
   if (segments.length === 0) {
     return { isHomeView: true };
   }
-  
+
   if (segments[0] === 'board' && segments[1]) {
     const boardId = segments[1] as BoardType;
     if (segments[2] === 'thread' && segments[3]) {
@@ -29,20 +36,20 @@ const parseUrlRoute = (): RouteState => {
     }
     return { isHomeView: false, currentBoard: boardId };
   }
-  
+
   return { isHomeView: true };
 };
 
 const updateUrl = (route: RouteState) => {
-  let path = '/';
-  
+  let path = '#/';
+
   if (!route.isHomeView && route.currentBoard) {
-    path = `/board/${route.currentBoard}`;
+    path = `#/board/${route.currentBoard}`;
     if (route.activeThreadId) {
       path += `/thread/${route.activeThreadId}`;
     }
   }
-  
+
   window.history.pushState({ ...route }, '', path);
 };
 
@@ -253,14 +260,16 @@ export default function App() {
     updateUrl({ isHomeView, currentBoard, activeThreadId: activeThreadId || undefined });
   }, [isHomeView, currentBoard, activeThreadId]);
 
-  // Handle browser back/forward buttons
+  // Handle browser back/forward buttons + manual hash changes
   useEffect(() => {
-    const handlePopState = () => {
+    const syncRouteFromUrl = () => {
       const route = parseUrlRoute();
       setIsHomeView(route.isHomeView);
+
       if (route.currentBoard) {
         setCurrentBoard(route.currentBoard);
       }
+
       if (route.activeThreadId) {
         setActiveThreadId(route.activeThreadId);
       } else {
@@ -268,8 +277,12 @@ export default function App() {
       }
     };
 
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', syncRouteFromUrl);
+    window.addEventListener('hashchange', syncRouteFromUrl);
+    return () => {
+      window.removeEventListener('popstate', syncRouteFromUrl);
+      window.removeEventListener('hashchange', syncRouteFromUrl);
+    };
   }, []);
 
   // Fetch threds whenever the board changes
@@ -368,6 +381,7 @@ export default function App() {
 
   // Logic: Create Thred
   const handleCreateThread = async (e: React.FormEvent) => {
+    if (!postContent.trim() && !selectedFile) return;
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
@@ -397,6 +411,7 @@ export default function App() {
 
   // Logic: Add Reply
   const handleReply = async (e: React.FormEvent) => {
+    if (!postContent.trim() && !selectedFile) return;
       e.preventDefault();
 
       if (!activeThreadId) return;
@@ -623,8 +638,14 @@ export default function App() {
                             </button>
                          </div>
                        )}
-                       <Button type="submit" disabled={!postContent.trim() || isSubmitting} isLoading={isSubmitting}>Reply</Button>
-                     </form>
+                        <Button 
+                          type="submit" 
+                          disabled={(!postContent.trim() && !selectedFile) || isSubmitting} 
+                          isLoading={isSubmitting}
+                        >
+                          Reply
+                        </Button>
+                      </form>
                   </div>
                 </div>
               </div>
@@ -669,7 +690,6 @@ export default function App() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</label>
                         <textarea
-                          required
                           rows={4}
                           value={postContent}
                           onChange={(e) => setPostContent(e.target.value)}
@@ -702,7 +722,13 @@ export default function App() {
                       </div>
                       <div className="flex justify-end gap-2 pt-2">
                         <Button type="button" variant="secondary" onClick={clearForm} disabled={isSubmitting}>Cancel</Button>
-                        <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>Post Thread</Button>
+                        <Button 
+                          type="submit" 
+                          isLoading={isSubmitting} 
+                          disabled={(!postContent.trim() && !selectedFile) || isSubmitting}
+                        >
+                          Post Thread
+                        </Button>                      
                       </div>
                     </form>
                   </div>
