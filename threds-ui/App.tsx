@@ -471,7 +471,7 @@ export default function App() {
           <div className="animate-fade-in bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
             <div className="mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">
               <h1 className="text-2xl font-bold dark:text-white font-mono">Directory of Threds</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">Status: {isOnline ? 'Online' : 'Booting up...60s'} | Account: Anonymous</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">Status: {isOnline ? 'Online' : 'Offline...'} | Account: Anonymous</p>
             </div>
             
             <div className="space-y-6 font-mono text-sm sm:text-base">
