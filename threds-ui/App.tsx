@@ -240,6 +240,15 @@ const PostItem: React.FC<{
   );
 };
 
+const LoadingState: React.FC<{ message?: string }> = ({ message = 'Loading...' }) => (
+  <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <div className="flex flex-col items-center gap-3 text-gray-500 dark:text-gray-400">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500 dark:border-gray-600 dark:border-t-blue-400" />
+      <p className="text-sm font-medium">{message}</p>
+    </div>
+  </div>
+);
+
 // --- Main Application ---
 
 export default function App() {
@@ -251,6 +260,7 @@ export default function App() {
   const [activeThread, setActiveThread] = useState<Thread | null>(null);
   const [isHomeView, setIsHomeView] = useState<boolean>(initialRoute.isHomeView);
   const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [isContentLoading, setIsContentLoading] = useState(true);
   
   // State for threds, loaded from localStorage if available
   const [threds, setThreds] = useState<Thread[]>([]);
@@ -287,22 +297,48 @@ export default function App() {
 
   // Fetch threds whenever the board changes
   useEffect(() => {
+    let isCancelled = false;
+
     const loadThreds = async () => {
-      if (isHomeView) {
-        // Load threds from all boards when in home view
-        const allThreds: Thread[] = [];
-        for (const board of BOARDS) {
-          const data = await api.fetchThreds(board.id);
-          allThreds.push(...data);
+      setIsContentLoading(true);
+      setError(null);
+
+      try {
+        if (isHomeView) {
+          const allThreds: Thread[] = [];
+          for (const board of BOARDS) {
+            const data = await api.fetchThreds(board.id);
+            if (!isCancelled) {
+              allThreds.push(...data);
+            }
+          }
+
+          if (!isCancelled) {
+            setThreds(allThreds);
+          }
+        } else {
+          const data = await api.fetchThreds(currentBoard);
+          if (!isCancelled) {
+            setThreds(data);
+          }
         }
-        setThreds(allThreds);
-      } else {
-        // Load threds only from the current board when viewing a specific board
-        const data = await api.fetchThreds(currentBoard);
-        setThreds(data);
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('Failed to load threds', err);
+          setError(err instanceof Error ? err.message : 'Failed to load content');
+          setThreds([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsContentLoading(false);
+        }
       }
     };
+
     loadThreds();
+    return () => {
+      isCancelled = true;
+    };
   }, [currentBoard, isHomeView]);
 
   
@@ -449,24 +485,39 @@ export default function App() {
   const navigateToBoard = (boardId: BoardType) => {
     setCurrentBoard(boardId);
     setActiveThreadId(null);
+    setActiveThread(null);
     setIsHomeView(false);
     setIsCreatingThred(false);
     setReplyTargetId(null);
+    setIsContentLoading(true);
   };
 
   const navigateToThread = async (thread: Thread) => {
     setActiveThreadId(thread.id);
+    setActiveThread(null);
     setIsHomeView(false);
+    setIsContentLoading(true);
 
-    const full = await api.fetchThread(thread.id);
-    setActiveThread(full);
+    try {
+      const full = await api.fetchThread(thread.id);
+      setActiveThread(full);
+    } catch (err) {
+      console.error('Failed to load thread', err);
+      setError(err instanceof Error ? err.message : 'Failed to load thread');
+    } finally {
+      setIsContentLoading(false);
+    }
   };
 
   const goHome = () => {
     setIsHomeView(true);
     setActiveThreadId(null);
+    setActiveThread(null);
     setIsCreatingThred(false);
+    setIsContentLoading(true);
   };
+
+  const showLoadingState = isContentLoading && (isHomeView || !activeThreadId || !activeThread);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors duration-300">
@@ -480,13 +531,14 @@ export default function App() {
       />
 
       <main className="max-w-6xl mx-auto px-4 pt-6">
-        
-        {isHomeView ? (
+        {showLoadingState ? (
+          <LoadingState message={activeThreadId && !activeThread ? 'Loading thread...' : 'Loading content...'} />
+        ) : isHomeView ? (
           // --- GLOBAL HOME VIEW ---
           <div className="animate-fade-in bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
             <div className="mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">
               <h1 className="text-2xl font-bold dark:text-white font-mono">Directory of Threds</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">Status: {isOnline ? 'Online' : 'Offline...'} | Account: Anonymous</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">Status: {isOnline ? 'Online' : 'Booting in 15s'} | Account: Anonymous</p>
             </div>
             
             <div className="space-y-6 font-mono text-sm sm:text-base">

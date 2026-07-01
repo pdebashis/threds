@@ -21,7 +21,8 @@ export const api = {
 
     const res = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
-      body: form
+      body: form,
+      cache: 'no-store'
     });
 
     if (!res.ok) {
@@ -34,7 +35,10 @@ export const api = {
 
   // Get all threds for a specific board
   async fetchThreds(boardType: string) {
-    const res = await fetch(`${API_BASE}/boards/${boardType}/threds`);
+    const res = await fetch(`${API_BASE}/boards/${boardType}/threds`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' }
+    });
     const data = await res.json();
     return Array.isArray(data) ? data.map(toCamelCase) : toCamelCase(data);
   },
@@ -43,8 +47,9 @@ export const api = {
   async createThread(boardType: string, data: { subject: string; content: string; imageUrl?: string }) {
     const res = await fetch(`${API_BASE}/boards/${boardType}/threds`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       body: JSON.stringify(data),
+      cache: 'no-store'
     });
     const thread = await res.json();
     return toCamelCase(thread);
@@ -52,7 +57,10 @@ export const api = {
 
   // Get a single thread with its posts
   async fetchThread(id: string) {
-    const res = await fetch(`${API_BASE}/threds/${id}`);
+    const res = await fetch(`${API_BASE}/threds/${id}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' }
+    });
     const thread = await res.json();
     return toCamelCase(thread);
   },
@@ -61,8 +69,9 @@ export const api = {
   async createPost(threadId: string, data: { content: string; replyToId?: string; imageUrl?: string }) {
     const res = await fetch(`${API_BASE}/threds/${threadId}/posts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       body: JSON.stringify(data),
+      cache: 'no-store'
     });
     const post = await res.json();
     return toCamelCase(post);
@@ -71,7 +80,7 @@ export const api = {
   // Check if Rails backend is online
   async checkStatus() {
     try {
-      const res = await fetch(`${API_BASE}/up`, { method: 'GET' });
+      const res = await fetch(`${API_BASE}/up`, { method: 'GET', cache: 'no-store' });
       return res.ok;
     } catch {
       return false;
