@@ -305,16 +305,12 @@ export default function App() {
 
       try {
         if (isHomeView) {
-          const allThreds: Thread[] = [];
-          for (const board of BOARDS) {
-            const data = await api.fetchThreds(board.id);
-            if (!isCancelled) {
-              allThreds.push(...data);
-            }
-          }
+          const allResults = await Promise.all(
+            BOARDS.map((board) => api.fetchThreds(board.id))
+          );
 
           if (!isCancelled) {
-            setThreds(allThreds);
+            setThreds(allResults.flat());
           }
         } else {
           const data = await api.fetchThreds(currentBoard);
