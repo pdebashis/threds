@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { BoardType, Thread, Post, BoardConfig } from './types';
-import { BOARDS, MAX_THREDS_PER_BOARD, MAX_POSTS_PER_THREAD } from './constants';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { BoardType, Thread } from './types';
+import { BOARDS, MAX_THREDS_PER_BOARD } from './constants';
 import { Button } from './components/Button';
+import { Navbar } from './components/Navbar';
+import { ThreadCard } from './components/ThreadCard';
+import { PostItem } from './components/PostItem';
+import { LoadingState } from './components/LoadingState';
 import { api } from './services/api';
 
 // --- URL Routing Functions ---
@@ -13,8 +17,6 @@ interface RouteState {
 }
 
 const normalizePath = (raw: string) => {
-  // Accept both path-based routes (/board/...) and hash-based routes (/#/board/...)
-  // Strip leading hashes and leading/trailing slashes.
   return raw.replace(/^#\/?/, '').replace(/^\/\+|\/\+$/g, '');
 };
 
@@ -53,206 +55,9 @@ const updateUrl = (route: RouteState) => {
   window.history.pushState({ ...route }, '', path);
 };
 
-// --- Helper Functions ---
-
-const scrollToPost = (postId: string) => {
-  const element = document.getElementById(`post-${postId}`);
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    element.classList.remove('animate-flash');
-    // Force reflow
-    void element.offsetWidth; 
-    element.classList.add('animate-flash');
-  }
-};
-
-// --- Helper Components ---
-
-const Navbar: React.FC<{ 
-  currentBoard: BoardType; 
-  onBoardChange: (b: BoardType) => void;
-  onHome: () => void;
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
-  isHomeView: boolean;
-}> = ({ currentBoard, onBoardChange, onHome, isDarkMode, toggleDarkMode, isHomeView }) => (
-  <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 transition-colors duration-300">
-    <div className="max-w-6xl mx-auto px-4">
-      <div className="flex items-center justify-between h-16">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={onHome}>
-          <div className="w-8 h-8 bg-black dark:bg-white dark:text-black text-white rounded flex items-center justify-center font-bold font-mono transition-colors">
-            TH
-          </div>
-          <span className="font-bold text-xl tracking-tight hidden sm:block dark:text-white">Threds</span>
-        </div>
-        
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar max-w-[200px] sm:max-w-none">
-            {BOARDS.map((board) => (
-              <button
-                key={board.id}
-                onClick={() => onBoardChange(board.id)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                  !isHomeView && currentBoard === board.id 
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                }`}
-              >
-                <i className={`fas ${board.icon} sm:mr-2 ${!isHomeView && currentBoard === board.id ? board.color : ''}`}></i>
-                <span className="hidden sm:inline">{board.label}</span>
-              </button>
-            ))}
-          </div>
-          <div className="h-6 w-px bg-gray-200 dark:bg-gray-600 mx-1"></div>
-          
-          <button
-            onClick={toggleDarkMode}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-             <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  </nav>
-);
-
-const ThreadCard: React.FC<{ thread: Thread; onClick: () => void }> = ({ thread, onClick }) => {
-  const firstPost = thread.posts[0];
-  const replyCount = thread.posts.length - 1;
-  const lastPost = thread.posts[thread.posts.length - 1];
-
-  return (
-    <div 
-      onClick={onClick}
-      className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-500 transition-all cursor-pointer group"
-    >
-      <div className="flex gap-4">
-        {firstPost.imageUrl ? (
-          <div className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-32 bg-gray-100 dark:bg-gray-900 rounded overflow-hidden border border-gray-200 dark:border-gray-700">
-            <img src={firstPost.imageUrl} alt="Thred thumbnail" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          </div>
-        ) : (
-          <div className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-32 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-300 dark:text-gray-600">
-            <i className="fas fa-comment-alt text-2xl"></i>
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between mb-1">
-             <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate pr-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">{thread.subject}</h3>
-             <span className="text-xs text-gray-400 font-mono whitespace-nowrap">{new Date(thread.timestamp).toLocaleDateString()}</span>
-          </div>
-          <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3 mb-2">{firstPost.content}</p>
-          <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 gap-4 mt-auto">
-            <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-              R: <strong>{replyCount}</strong>
-            </span>
-            {replyCount > 0 && (
-              <span className="truncate max-w-[150px] italic">
-                Last: {new Date(lastPost.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const PostItem: React.FC<{ 
-  post: Post; 
-  index: number; 
-  onReply: (id: string) => void;
-  repliesToThisPost: Post[];
-}> = ({ post, index, onReply, repliesToThisPost }) => {
-  const [isImageExpanded, setIsImageExpanded] = useState(false);
-  return (
-    <div 
-      id={`post-${post.id}`}
-      className={`p-4 bg-gray-50 border-gray-100 dark:bg-gray-700/30 dark:border-gray-700/50 rounded-lg border mb-4 transition-colors duration-500 ${
-        isImageExpanded ? 'flex flex-col' : 'flex flex-col sm:flex-row gap-4'
-      }`}
-    >
-      {post.imageUrl && (
-        <div className={`flex-shrink-0 ${isImageExpanded ? 'w-full mb-4' : ''}`}>
-          <img 
-            src={post.imageUrl} 
-            alt="Post attachment" 
-            onClick={() => setIsImageExpanded(!isImageExpanded)}
-            className={`${
-              isImageExpanded 
-                ? 'max-w-full max-h-[60vh] object-contain mx-auto' 
-                : 'max-w-full sm:max-w-[200px] max-h-[200px] object-contain'
-            } rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 cursor-pointer hover:opacity-80 transition-all duration-300`} 
-          />
-        </div>
-      )}
-      <div className={`min-w-0 ${isImageExpanded ? 'w-full' : 'flex-1'}`}>
-        <div className="flex items-center gap-2 mb-2 border-b border-gray-200/50 dark:border-gray-600/50 pb-2">
-          <span className="font-bold text-sm text-blue-900 dark:text-blue-300">
-            Anonymous
-          </span>
-          <span className="text-xs text-gray-400 font-mono">
-            No.{post.id.slice(-6)} • {new Date(post.timestamp).toLocaleString()}
-          </span>
-          {index === 0 && <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1.5 rounded ml-auto">OP</span>}
-          
-          <button 
-            onClick={() => onReply(post.id)}
-            className="ml-auto text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
-          >
-            Reply
-          </button>
-        </div>
-
-        {/* Replying To Link */}
-        {post.replyToId && (
-          <div 
-            onClick={() => scrollToPost(post.replyToId!)}
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer mb-2 inline-block"
-          >
-            &gt;&gt;{post.replyToId.slice(-6)}
-          </div>
-        )}
-
-        <p className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 text-sm leading-relaxed font-mono">
-          {post.content}
-        </p>
-
-        {/* Replies List */}
-        {repliesToThisPost.length > 0 && (
-          <div className="mt-3 pt-2 border-t border-gray-200/50 dark:border-gray-600/50 text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-1 items-center">
-            <span className="italic mr-1">Replies:</span>
-            {repliesToThisPost.map(reply => (
-              <button
-                key={reply.id}
-                onClick={() => scrollToPost(reply.id)}
-                className="text-blue-600 dark:text-blue-400 hover:underline hover:bg-blue-50 dark:hover:bg-blue-900/30 px-1 rounded transition-colors"
-              >
-                &gt;&gt;{reply.id.slice(-6)}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const LoadingState: React.FC<{ message?: string }> = ({ message = 'Loading...' }) => (
-  <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
-    <div className="flex flex-col items-center gap-3 text-gray-500 dark:text-gray-400">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500 dark:border-gray-600 dark:border-t-blue-400" />
-      <p className="text-sm font-medium">{message}</p>
-    </div>
-  </div>
-);
-
 // --- Main Application ---
 
 export default function App() {
-  // Initialize state from URL
   const initialRoute = parseUrlRoute();
   
   const [currentBoard, setCurrentBoard] = useState<BoardType>(initialRoute.currentBoard || BoardType.WORK);
@@ -262,8 +67,23 @@ export default function App() {
   const [isOnline, setIsOnline] = useState<boolean>(false);
   const [isContentLoading, setIsContentLoading] = useState(true);
   
-  // State for threds, loaded from localStorage if available
   const [threds, setThreds] = useState<Thread[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Form States
+  const [isCreatingThred, setIsCreatingThred] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [postContent, setPostContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  
+  // Reply specific state
+  const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  const replyInputRef = useRef<HTMLInputElement>(null);
+  
+  // Loading & Error States
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Sync URL when navigation state changes
   useEffect(() => {
@@ -295,7 +115,29 @@ export default function App() {
     };
   }, []);
 
-  // Fetch threds whenever the board changes
+  // Dark Mode side-effect
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode(prev => !prev);
+  }, []);
+
+  // Check backend status
+  useEffect(() => {
+    const checkStatus = async () => {
+      const isUp = await api.checkStatus();
+      setIsOnline(isUp);
+    };
+    checkStatus();
+  }, []);
+
+  // Fetch threds whenever the board changes or home view changes
   useEffect(() => {
     let isCancelled = false;
 
@@ -337,51 +179,31 @@ export default function App() {
     };
   }, [currentBoard, isHomeView]);
 
-  
-  // Dark Mode
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Derived state memoization
+  const currentBoardThreds = useMemo(() => {
+    return threds.filter(t => t.boardId === currentBoard);
+  }, [threds, currentBoard]);
 
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+  const boardInfo = useMemo(() => {
+    return BOARDS.find(b => b.id === currentBoard) || BOARDS[0];
+  }, [currentBoard]);
+
+  // Post reply mappings memoization to avoid O(N^2) calculations during render
+  const repliesMap = useMemo(() => {
+    if (!activeThread) return new Map<string, Thread['posts']>();
+    const map = new Map<string, Thread['posts']>();
+    for (const post of activeThread.posts) {
+      if (post.replyToId) {
+        const existing = map.get(post.replyToId) || [];
+        existing.push(post);
+        map.set(post.replyToId, existing);
+      }
     }
-  }, [isDarkMode]);
-
-  // Check backend status
-  useEffect(() => {
-    const checkStatus = async () => {
-      const isUp = await api.checkStatus();
-      setIsOnline(isUp);
-    };
-
-    // Check once on mount
-    checkStatus();
-  }, []);
-
-  // Form States
-  const [isCreatingThred, setIsCreatingThred] = useState(false);
-  const [subject, setSubject] = useState('');
-  const [postContent, setPostContent] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
-  
-  // Reply specific state
-  const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
-  const replyInputRef = useRef<HTMLInputElement>(null);
-  
-  // Loading States
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Derived state
-  const currentBoardThreds = threds
-    .filter(t => t.boardId === currentBoard);
-  const boardInfo = BOARDS.find(b => b.id === currentBoard)!;
+    return map;
+  }, [activeThread]);
 
   // File Handler
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
@@ -391,9 +213,9 @@ export default function App() {
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
-  const clearForm = () => {
+  const clearForm = useCallback(() => {
     setSubject('');
     setPostContent('');
     setSelectedFile(null);
@@ -402,17 +224,53 @@ export default function App() {
     setReplyTargetId(null);
     setIsSubmitting(false);
     setError(null);
-  };
+  }, []);
 
-  const initReplyTo = (postId: string) => {
+  const initReplyTo = useCallback((postId: string) => {
     setReplyTargetId(postId);
     if (replyInputRef.current) {
       replyInputRef.current.focus();
     }
-  };
+  }, []);
+
+  // Navigation handlers
+  const navigateToBoard = useCallback((boardId: BoardType) => {
+    setCurrentBoard(boardId);
+    setActiveThreadId(null);
+    setActiveThread(null);
+    setIsHomeView(false);
+    setIsCreatingThred(false);
+    setReplyTargetId(null);
+    setIsContentLoading(true);
+  }, []);
+
+  const navigateToThread = useCallback(async (thread: Thread) => {
+    setActiveThreadId(thread.id);
+    setActiveThread(null);
+    setIsHomeView(false);
+    setIsContentLoading(true);
+
+    try {
+      const full = await api.fetchThread(thread.id);
+      setActiveThread(full);
+    } catch (err) {
+      console.error('Failed to load thread', err);
+      setError(err instanceof Error ? err.message : 'Failed to load thread');
+    } finally {
+      setIsContentLoading(false);
+    }
+  }, []);
+
+  const goHome = useCallback(() => {
+    setIsHomeView(true);
+    setActiveThreadId(null);
+    setActiveThread(null);
+    setIsCreatingThred(false);
+    setIsContentLoading(true);
+  }, []);
 
   // Logic: Create Thred
-  const handleCreateThread = async (e: React.FormEvent) => {
+  const handleCreateThread = useCallback(async (e: React.FormEvent) => {
     if (!postContent.trim() && !selectedFile) return;
     e.preventDefault();
     setIsSubmitting(true);
@@ -439,79 +297,44 @@ export default function App() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [postContent, selectedFile, currentBoard, subject, clearForm]);
 
   // Logic: Add Reply
-  const handleReply = async (e: React.FormEvent) => {
+  const handleReply = useCallback(async (e: React.FormEvent) => {
     if (!postContent.trim() && !selectedFile) return;
-      e.preventDefault();
+    e.preventDefault();
 
-      if (!activeThreadId) return;
+    if (!activeThreadId) return;
 
-      setIsSubmitting(true);
-      setError(null);
-
-      try {
-        let imageUrl: string | undefined;
-        if (selectedFile) {
-          imageUrl = await api.uploadImage(selectedFile);
-        }
-
-        await api.createPost(activeThreadId, {
-          content: postContent,
-          replyToId: replyTargetId,
-          imageUrl
-        });
-
-        // reload thread
-        const updated = await api.fetchThread(activeThreadId);
-        setActiveThread(updated);
-
-        // Clear the form so the UI updates
-        clearForm(); 
-      } catch (err) {
-        console.error("Reply failed", err);
-        const message = err instanceof Error ? err.message : 'An error occurred while creating the reply';
-        setError(message);
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
-
-  const navigateToBoard = (boardId: BoardType) => {
-    setCurrentBoard(boardId);
-    setActiveThreadId(null);
-    setActiveThread(null);
-    setIsHomeView(false);
-    setIsCreatingThred(false);
-    setReplyTargetId(null);
-    setIsContentLoading(true);
-  };
-
-  const navigateToThread = async (thread: Thread) => {
-    setActiveThreadId(thread.id);
-    setActiveThread(null);
-    setIsHomeView(false);
-    setIsContentLoading(true);
+    setIsSubmitting(true);
+    setError(null);
 
     try {
-      const full = await api.fetchThread(thread.id);
-      setActiveThread(full);
-    } catch (err) {
-      console.error('Failed to load thread', err);
-      setError(err instanceof Error ? err.message : 'Failed to load thread');
-    } finally {
-      setIsContentLoading(false);
-    }
-  };
+      let imageUrl: string | undefined;
+      if (selectedFile) {
+        imageUrl = await api.uploadImage(selectedFile);
+      }
 
-  const goHome = () => {
-    setIsHomeView(true);
-    setActiveThreadId(null);
-    setActiveThread(null);
-    setIsCreatingThred(false);
-    setIsContentLoading(true);
-  };
+      await api.createPost(activeThreadId, {
+        content: postContent,
+        replyToId: replyTargetId || undefined,
+        imageUrl
+      });
+
+      // reload thread (force refresh to bypass stale cache)
+      const updated = await api.fetchThread(activeThreadId, true);
+      setActiveThread(updated);
+
+      // Clear the form so the UI updates
+      clearForm(); 
+    } catch (err) {
+      console.error("Reply failed", err);
+      const message = err instanceof Error ? err.message : 'An error occurred while creating the reply';
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [postContent, selectedFile, activeThreadId, replyTargetId, clearForm]);
 
   const showLoadingState = isContentLoading && (isHomeView || !activeThreadId || !activeThread);
 
@@ -522,7 +345,7 @@ export default function App() {
         onBoardChange={navigateToBoard}
         onHome={goHome}
         isDarkMode={isDarkMode}
-        toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+        toggleDarkMode={toggleDarkMode}
         isHomeView={isHomeView}
       />
 
@@ -572,19 +395,6 @@ export default function App() {
                 );
               })}
             </div>
-
-            {/* <div className="mt-12 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="text-xs text-gray-400 font-mono">
-                Total Threds: {threds.length} | Threds per board: {MAX_THREDS_PER_BOARD}
-              </div>
-              <Button onClick={() => {
-                setCurrentBoard(BoardType.RANDOM);
-                setIsHomeView(false);
-                setIsCreatingThred(true);
-              }} variant="secondary" className="w-full sm:w-auto">
-                <i className="fas fa-plus mr-2"></i> Quick Post to Random
-              </Button>
-            </div> */}
           </div>
         ) : (
           // --- EXISTING VIEWS ---
@@ -620,8 +430,7 @@ export default function App() {
                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">{activeThread.subject}</h2>
                    <div className="space-y-4">
                      {activeThread.posts.map((post, idx) => {
-                        // Find which posts reply to this one
-                        const repliesToThis = activeThread.posts.filter(p => p.replyToId === post.id);
+                        const repliesToThis = repliesMap.get(post.id) || [];
                         return (
                           <PostItem 
                             key={post.id} 
