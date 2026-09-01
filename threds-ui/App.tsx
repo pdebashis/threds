@@ -64,8 +64,11 @@ export default function App() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(initialRoute.activeThreadId || null);
   const [activeThread, setActiveThread] = useState<Thread | null>(null);
   const [isHomeView, setIsHomeView] = useState<boolean>(initialRoute.isHomeView);
-  const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
+  const [isHibernateView, setIsHibernateView] = useState(false);
+  const [isWaking, setIsWaking] = useState(false);
+  const [wakeDots, setWakeDots] = useState('');
   
   const [threds, setThreds] = useState<Thread[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -128,17 +131,74 @@ export default function App() {
     setIsDarkMode(prev => !prev);
   }, []);
 
+  const handleBringUpThreds = useCallback(() => {
+    setIsContentLoading(true);
+    setError(null);
+    setWakeDots('.');
+    setIsWaking(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isWaking) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const checkBackend = async () => {
+      const isUp = await api.checkStatus();
+      if (isCancelled) {
+        return;
+      }
+
+      setIsOnline(isUp);
+      setIsHibernateView(!isUp);
+
+      if (isUp) {
+        setIsWaking(false);
+        setWakeDots('');
+        setIsHomeView(true);
+        setCurrentBoard(BoardType.WORK);
+        setActiveThreadId(null);
+        setActiveThread(null);
+      }
+    };
+
+    checkBackend();
+    const intervalId = window.setInterval(() => {
+      setWakeDots((previousDots: string) => `${previousDots}.`);
+      checkBackend();
+    }, 5000);
+    const timeoutId = window.setTimeout(() => {
+      setIsWaking(false);
+      setIsContentLoading(false);
+    }, 5 * 60 * 1000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [isWaking]);
+
   // Check backend status
   useEffect(() => {
     const checkStatus = async () => {
       const isUp = await api.checkStatus();
       setIsOnline(isUp);
+      setIsHibernateView(!isUp);
     };
     checkStatus();
   }, []);
 
   // Fetch threds whenever the board changes or home view changes
   useEffect(() => {
+    if (isOnline === false || isHibernateView) {
+      setThreds([]);
+      setIsContentLoading(false);
+      return;
+    }
+
     let isCancelled = false;
 
     const loadThreds = async () => {
@@ -165,6 +225,8 @@ export default function App() {
           console.error('Failed to load threds', err);
           setError(err instanceof Error ? err.message : 'Failed to load content');
           setThreds([]);
+          setIsOnline(false);
+          setIsHibernateView(true);
         }
       } finally {
         if (!isCancelled) {
@@ -177,7 +239,7 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [currentBoard, isHomeView]);
+  }, [currentBoard, isHomeView, isOnline, isHibernateView]);
 
   // Derived state memoization
   const currentBoardThreds = useMemo(() => {
@@ -336,7 +398,32 @@ export default function App() {
     }
   }, [postContent, selectedFile, activeThreadId, replyTargetId, clearForm]);
 
-  const showLoadingState = isContentLoading && (isHomeView || !activeThreadId || !activeThread);
+  const showLoadingState = isOnline !== false && isContentLoading && (isHomeView || !activeThreadId || !activeThread);
+
+  if (isHibernateView || isOnline === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-800 flex items-center justify-center px-4">
+        <div className="max-w-xl w-full rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm text-center">
+          <div className="mb-4 text-5xl" aria-hidden="true">🌤️</div>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Site status</p>
+          <h1 className="mt-4 text-3xl font-bold text-slate-900">Threds is in hibernate.</h1>
+          <p className="mt-4 text-base text-slate-600">
+            The backend is currently unreachable, so the site has gone quiet until it wakes back up.
+          </p>
+          <div className="mt-8 flex items-center justify-center gap-2">
+            <Button onClick={handleBringUpThreds} isLoading={isWaking} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
+              {isWaking ? 'Waking Threds' : 'Bring up Threds'}
+            </Button>
+            {isWaking && (
+              <span className="min-w-[1.5rem] text-left text-xl tracking-widest text-slate-500" aria-live="polite">
+                {wakeDots}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors duration-300">
