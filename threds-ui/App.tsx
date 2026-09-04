@@ -164,6 +164,8 @@ export default function App() {
       return;
     }
 
+    if (activeThreadId) return;
+
     let isCancelled = false;
 
     const loadThreds = async () => {
@@ -204,7 +206,7 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [currentBoard, isHomeView, isOnline, isHibernateView]);
+  }, [currentBoard, isHomeView, activeThreadId, isOnline, isHibernateView]);
 
   // Derived state memoization
   const currentBoardThreds = useMemo(() => {
@@ -262,6 +264,8 @@ export default function App() {
 
   // Navigation handlers
   const navigateToBoard = useCallback((boardId: BoardType) => {
+    if (!isHomeView && !activeThreadId && currentBoard === boardId) return;
+
     setCurrentBoard(boardId);
     setActiveThreadId(null);
     setActiveThread(null);
@@ -269,9 +273,10 @@ export default function App() {
     setIsCreatingThred(false);
     setReplyTargetId(null);
     setIsContentLoading(true);
-  }, []);
+  }, [activeThreadId, currentBoard, isHomeView]);
 
   const navigateToThread = useCallback(async (thread: Thread) => {
+    setCurrentBoard(thread.boardId);
     setActiveThreadId(thread.id);
     setActiveThread(null);
     setIsHomeView(false);
