@@ -1,6 +1,4 @@
 const API_BASE = import.meta.env.VITE_API_URL;
-const API_TIMEOUT_MS = 4000;
-const HEALTH_CHECK_TIMEOUT_MS = 250;
 
 // Simple in-memory cache for fast instant rendering on board/thread navigation
 interface CacheEntry<T> {
@@ -11,32 +9,15 @@ interface CacheEntry<T> {
 const cache = new Map<string, CacheEntry<any>>();
 const CACHE_TTL_MS = 30000; // 30 seconds TTL
 
-const fetchWithTimeout = async <T>(url: string, init: RequestInit = {}, timeoutMs = API_TIMEOUT_MS): Promise<T> => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+const fetchJson = async <T>(url: string, init: RequestInit = {}): Promise<T> => {
+  const res = await fetch(url, init);
 
-  try {
-    const res = await fetch(url, { ...init, signal: controller.signal });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || `Request failed: ${res.status}`);
-    }
-
-    const text = await res.text();
-    if (!text) {
-      return null as T;
-    }
-
-    return JSON.parse(text) as T;
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('The site is in hibernate mode.');
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || `Request failed: ${res.status}`);
   }
+
+  return res.json() as Promise<T>;
 };
 
 // Optimized helper function to convert to camelCase
@@ -74,7 +55,7 @@ export const api = {
     const form = new FormData();
     form.append("file", file);
 
-    const data = await fetchWithTimeout<{ imageUrl: string }>(`${API_BASE}/upload`, {
+    const data = await fetchJson<{ imageUrl: string }>(`${API_BASE}/upload`, {
       method: 'POST',
       body: form,
       cache: 'no-store'
@@ -92,7 +73,7 @@ export const api = {
       return cached.data;
     }
 
-    const data = await fetchWithTimeout<any>(`${API_BASE}/boards/${boardType}/threds`, {
+    const data = await fetchJson<any>(`${API_BASE}/boards/${boardType}/threds`, {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' }
     });
@@ -103,7 +84,7 @@ export const api = {
 
   // Create a new thread
   async createThread(boardType: string, data: { subject: string; content: string; imageUrl?: string }) {
-    const thread = await fetchWithTimeout<any>(`${API_BASE}/boards/${boardType}/threds`, {
+    const thread = await fetchJson<any>(`${API_BASE}/boards/${boardType}/threds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       body: JSON.stringify(data),
@@ -124,7 +105,7 @@ export const api = {
       return cached.data;
     }
 
-    const thread = await fetchWithTimeout<any>(`${API_BASE}/threds/${id}`, {
+    const thread = await fetchJson<any>(`${API_BASE}/threds/${id}`, {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' }
     });
@@ -135,7 +116,7 @@ export const api = {
 
   // Add a reply to a thread
   async createPost(threadId: string, data: { content: string; replyToId?: string; imageUrl?: string }) {
-    const post = await fetchWithTimeout<any>(`${API_BASE}/threds/${threadId}/posts`, {
+    const post = await fetchJson<any>(`${API_BASE}/threds/${threadId}/posts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       body: JSON.stringify(data),
@@ -149,21 +130,15 @@ export const api = {
 
   // Check if Rails backend is online
   async checkStatus() {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
-
     try {
       const res = await fetch(`${API_BASE}/up`, {
         method: 'GET',
-        cache: 'no-store',
-        signal: controller.signal
+        cache: 'no-store'
       });
 
       return res.ok;
     } catch {
       return false;
-    } finally {
-      clearTimeout(timeoutId);
     }
   }
 };

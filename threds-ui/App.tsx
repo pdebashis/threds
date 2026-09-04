@@ -67,8 +67,6 @@ export default function App() {
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [isHibernateView, setIsHibernateView] = useState(false);
-  const [isWaking, setIsWaking] = useState(false);
-  const [wakeDots, setWakeDots] = useState('');
   
   const [threds, setThreds] = useState<Thread[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -82,7 +80,7 @@ export default function App() {
   
   // Reply specific state
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
-  const replyInputRef = useRef<HTMLInputElement>(null);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
   
   // Loading & Error States
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,55 +129,22 @@ export default function App() {
     setIsDarkMode(prev => !prev);
   }, []);
 
-  const handleBringUpThreds = useCallback(() => {
+  const handleBringUpThreds = useCallback(async () => {
     setIsContentLoading(true);
     setError(null);
-    setWakeDots('.');
-    setIsWaking(true);
-  }, []);
+    const isUp = await api.checkStatus();
+    setIsOnline(isUp);
+    setIsHibernateView(!isUp);
 
-  useEffect(() => {
-    if (!isWaking) {
-      return;
+    if (isUp) {
+      setIsHomeView(true);
+      setCurrentBoard(BoardType.WORK);
+      setActiveThreadId(null);
+      setActiveThread(null);
     }
 
-    let isCancelled = false;
-
-    const checkBackend = async () => {
-      const isUp = await api.checkStatus();
-      if (isCancelled) {
-        return;
-      }
-
-      setIsOnline(isUp);
-      setIsHibernateView(!isUp);
-
-      if (isUp) {
-        setIsWaking(false);
-        setWakeDots('');
-        setIsHomeView(true);
-        setCurrentBoard(BoardType.WORK);
-        setActiveThreadId(null);
-        setActiveThread(null);
-      }
-    };
-
-    checkBackend();
-    const intervalId = window.setInterval(() => {
-      setWakeDots((previousDots: string) => `${previousDots}.`);
-      checkBackend();
-    }, 5000);
-    const timeoutId = window.setTimeout(() => {
-      setIsWaking(false);
-      setIsContentLoading(false);
-    }, 5 * 60 * 1000);
-
-    return () => {
-      isCancelled = true;
-      window.clearInterval(intervalId);
-      window.clearTimeout(timeoutId);
-    };
-  }, [isWaking]);
+    setIsContentLoading(false);
+  }, []);
 
   // Check backend status
   useEffect(() => {
@@ -193,7 +158,7 @@ export default function App() {
 
   // Fetch threds whenever the board changes or home view changes
   useEffect(() => {
-    if (isOnline === false || isHibernateView) {
+    if (isOnline !== true || isHibernateView) {
       setThreds([]);
       setIsContentLoading(false);
       return;
@@ -398,9 +363,16 @@ export default function App() {
     }
   }, [postContent, selectedFile, activeThreadId, replyTargetId, clearForm]);
 
+  const handleMessageKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      e.currentTarget.form?.requestSubmit();
+    }
+  }, []);
+
   const showLoadingState = isOnline !== false && isContentLoading && (isHomeView || !activeThreadId || !activeThread);
 
-  if (isHibernateView || isOnline === false) {
+  if (isHibernateView || isOnline !== true) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-800 flex items-center justify-center px-4">
         <div className="max-w-xl w-full rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm text-center">
@@ -411,14 +383,9 @@ export default function App() {
             The backend is currently unreachable, so the site has gone quiet until it wakes back up.
           </p>
           <div className="mt-8 flex items-center justify-center gap-2">
-            <Button onClick={handleBringUpThreds} isLoading={isWaking} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
-              {isWaking ? 'Waking Threds' : 'Bring up Threds'}
+            <Button onClick={handleBringUpThreds} isLoading={isContentLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
+              Bring up Threds
             </Button>
-            {isWaking && (
-              <span className="min-w-[1.5rem] text-left text-xl tracking-widest text-slate-500" aria-live="polite">
-                {wakeDots}
-              </span>
-            )}
           </div>
         </div>
       </div>
@@ -553,14 +520,15 @@ export default function App() {
                      )}
                      <form onSubmit={handleReply} className="flex gap-2">
                        <div className="flex-1 relative">
-                          <input 
+                          <textarea 
                             ref={replyInputRef}
-                            type="text" 
+                            rows={2}
                             value={postContent}
                             onChange={(e) => setPostContent(e.target.value)}
+                            onKeyDown={handleMessageKeyDown}
                             placeholder="Write a reply..."
                             disabled={isSubmitting}
-                            className="w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none shadow-sm placeholder-gray-400 disabled:opacity-50"
+                            className="w-full pl-3 pr-10 py-2 resize-y border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none shadow-sm placeholder-gray-400 disabled:opacity-50"
                           />
                           <div className="absolute right-2 top-1/2 -translate-y-1/2">
                             <label className={`cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`}>
@@ -637,6 +605,7 @@ export default function App() {
                           rows={4}
                           value={postContent}
                           onChange={(e) => setPostContent(e.target.value)}
+                          onKeyDown={handleMessageKeyDown}
                           disabled={isSubmitting}
                           className="w-full p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500 outline-none disabled:opacity-50"
                           placeholder="Type your message here..."
