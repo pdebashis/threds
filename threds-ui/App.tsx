@@ -208,6 +208,38 @@ export default function App() {
     };
   }, [currentBoard, isHomeView, activeThreadId, isOnline, isHibernateView]);
 
+  useEffect(() => {
+    if (!activeThreadId || isOnline !== true || isHibernateView || activeThread) return;
+
+    let isCancelled = false;
+
+    const loadThread = async () => {
+      setIsContentLoading(true);
+      setError(null);
+
+      try {
+        const thread = await api.fetchThread(activeThreadId);
+        if (!isCancelled) {
+          setActiveThread(thread);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('Failed to load thread', err);
+          setError(err instanceof Error ? err.message : 'Failed to load thread');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsContentLoading(false);
+        }
+      }
+    };
+
+    loadThread();
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeThreadId, activeThread, isOnline, isHibernateView]);
+
   // Derived state memoization
   const currentBoardThreds = useMemo(() => {
     return threds.filter(t => t.boardId === currentBoard);
@@ -275,22 +307,12 @@ export default function App() {
     setIsContentLoading(true);
   }, [activeThreadId, currentBoard, isHomeView]);
 
-  const navigateToThread = useCallback(async (thread: Thread) => {
+  const navigateToThread = useCallback((thread: Thread) => {
     setCurrentBoard(thread.boardId);
     setActiveThreadId(thread.id);
     setActiveThread(null);
     setIsHomeView(false);
     setIsContentLoading(true);
-
-    try {
-      const full = await api.fetchThread(thread.id);
-      setActiveThread(full);
-    } catch (err) {
-      console.error('Failed to load thread', err);
-      setError(err instanceof Error ? err.message : 'Failed to load thread');
-    } finally {
-      setIsContentLoading(false);
-    }
   }, []);
 
   const goHome = useCallback(() => {
