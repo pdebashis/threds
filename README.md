@@ -17,16 +17,15 @@
 
     graph TD
         Client["React Frontend (threds-ui)"] <-->|JSON REST API| Server["Ruby on Rails Backend (threds-api)"]
-        Server <-->|ActiveRecord| DB[("Database (SQLite3 / PostgreSQL)")]
+        Server <-->|ActiveRecord| DB[("Database (PostgreSQL)")]
         Server <-->|Media Storage| Cloudinary["Cloudinary CDN"]
     ──────
   ### 3. Frontend Architecture (package.json)
 
-      into frontend camelCase).
   • Tech Stack: Built using React 19, TypeScript, and Vite.
   • Key Components & Services:
       • App.tsx: Manages board state, thread views, navigation, and modal forms for posting/replying.
-      • api.ts: Service layer that communicates with the backend. Handles client-server data mapping (converting backend snake_case payloads
+      • api.ts: Service layer that communicates with the backend. Handles client-server data mapping 
       • types.ts: Data contracts defining types.ts, types.ts, and types.ts.
 
   ──────
