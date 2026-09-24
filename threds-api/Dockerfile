@@ -48,12 +48,15 @@ COPY --from=build /rails /rails
 
 # Run and own only the runtime files as a non-root user for security
 RUN useradd rails --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
+    mkdir -p db log storage tmp && \
+    chmod +x /rails/bin/docker-entrypoint /rails/bin/rails /rails/bin/rake && \
+    chown -R rails:rails /rails
+
 USER rails:rails
 
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
-# Start the server by default, this can be overwritten at runtime
+# Start the server by default
 EXPOSE 3000
 CMD ["./bin/rails", "server"]

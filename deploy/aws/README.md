@@ -1,36 +1,46 @@
 # Deploy threds-api on AWS EC2
 
 This deployment uses one EC2 instance running Docker Compose. The Rails API connects to Neon for PostgreSQL, and Caddy provides HTTPS certificates automatically for the API domain.
+Connect to the EC2 instance:
 
+```sh
+
+```
 ## AWS setup
-
+Then, on EC2:
 1. Create an Ubuntu 24.04 EC2 instance using a free-tier eligible instance type in the region you prefer.
+```sh
 2. Attach a security group that allows TCP 22 from your IP, and TCP 80 and 443 from `0.0.0.0/0`. Do not open port 5432.
 3. Allocate and associate an Elastic IP so the address does not change after a stop/start.
 4. Point an `A` DNS record such as `api.example.com` to that Elastic IP.
 5. Connect over SSH and install Docker:
+```
+
+Check the deployment:
 
 ```sh
-sudo apt update
-sudo apt install -y docker.io docker-compose-plugin git
-sudo systemctl enable --now docker
+```sh
 sudo usermod -aG docker $USER
 ```
 
-Sign out and reconnect after the group change.
+For future backend deployments:
 
+```sh
 ## Deploy
 
 From the EC2 host:
 
+```
 ```sh
-git clone YOUR_REPOSITORY_URL threds
-cd threds
-cp deploy/aws/env.example deploy/aws/.env.aws
+You do not need `--force-recreate` for code changes. `--build` rebuilds the Rails
+image when the code or Dockerfile changes, and Compose recreates the container as
+needed.
 nano deploy/aws/.env.aws
 ```
 
+```sh
 Set `API_DOMAIN` to the DNS name already pointing to the instance, set `CORS_ORIGINS` to the public frontend URL, and set `DATABASE_URL` to the pooled Neon connection string. The Neon URL should include `?sslmode=require`. Also fill in the Rails and Cloudinary values. Copy the Rails master key from your local `threds-api/config/master.key`; never commit it or the `.env.aws` file.
+```
 
 Start the stack:
 
@@ -53,8 +63,32 @@ Set `VITE_API_URL=https://api.example.com` in `threds-ui`, build the frontend, a
 
 ## Updates
 
-```sh
+ssh -i ~/.ssh/threds-api-aws.pem ubuntu@<IP>
+
+Then on EC2:
+
+cd ~/threds
 git pull
-docker compose --env-file deploy/aws/.env.aws -f deploy/aws/docker-compose.yml up -d --build
-```
+cd deploy/aws
+docker compose --env-file .env.aws up -d --build
+Check that it worked
+docker compose --env-file .env.aws ps
+
+Then:
+
+docker compose --env-file .env.aws logs --tail=50 api
+Your normal backend deploy
+
+So from now on, it's basically:
+
+cd ~/threds
+git pull
+cd deploy/aws
+docker compose --env-file .env.aws up -d --build
+
+You don't need --force-recreate every time. --build will rebuild the Rails image when the code/Dockerfile changes and Compose will recreate the container as needed.
+
+If you change only environment variables in .env.aws, use:
+
+docker compose --env-file .env.aws up -d --force-recreate
 
