@@ -66,7 +66,6 @@ export default function App() {
   const [isHomeView, setIsHomeView] = useState<boolean>(initialRoute.isHomeView);
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
-  const [isHibernateView, setIsHibernateView] = useState(false);
   
   const [threds, setThreds] = useState<Thread[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -129,36 +128,18 @@ export default function App() {
     setIsDarkMode(prev => !prev);
   }, []);
 
-  const handleBringUpThreds = useCallback(async () => {
-    setIsContentLoading(true);
-    setError(null);
-    const isUp = await api.checkStatus();
-    setIsOnline(isUp);
-    setIsHibernateView(!isUp);
-
-    if (isUp) {
-      setIsHomeView(true);
-      setCurrentBoard(BoardType.WORK);
-      setActiveThreadId(null);
-      setActiveThread(null);
-    }
-
-    setIsContentLoading(false);
-  }, []);
-
   // Check backend status
   useEffect(() => {
     const checkStatus = async () => {
       const isUp = await api.checkStatus();
       setIsOnline(isUp);
-      setIsHibernateView(!isUp);
     };
     checkStatus();
   }, []);
 
   // Fetch threds whenever the board changes or home view changes
   useEffect(() => {
-    if (isOnline !== true || isHibernateView) {
+    if (isOnline !== true) {
       setThreds([]);
       setIsContentLoading(false);
       return;
@@ -193,7 +174,6 @@ export default function App() {
           setError(err instanceof Error ? err.message : 'Failed to load content');
           setThreds([]);
           setIsOnline(false);
-          setIsHibernateView(true);
         }
       } finally {
         if (!isCancelled) {
@@ -206,10 +186,10 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [currentBoard, isHomeView, activeThreadId, isOnline, isHibernateView]);
+  }, [currentBoard, isHomeView, activeThreadId, isOnline]);
 
   useEffect(() => {
-    if (!activeThreadId || isOnline !== true || isHibernateView || activeThread) return;
+    if (!activeThreadId || isOnline !== true || activeThread) return;
 
     let isCancelled = false;
 
@@ -238,7 +218,7 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [activeThreadId, activeThread, isOnline, isHibernateView]);
+  }, [activeThreadId, activeThread, isOnline]);
 
   // Derived state memoization
   const currentBoardThreds = useMemo(() => {
@@ -399,7 +379,7 @@ export default function App() {
 
   const showLoadingState = isOnline !== false && isContentLoading && (isHomeView || !activeThreadId || !activeThread);
 
-  if (isHibernateView || isOnline !== true) {
+  if (isOnline === false) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-800 flex items-center justify-center px-4">
         <div className="max-w-xl w-full rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm text-center">
@@ -407,13 +387,8 @@ export default function App() {
           <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Site status</p>
           <h1 className="mt-4 text-3xl font-bold text-slate-900">Threds is in hibernate.</h1>
           <p className="mt-4 text-base text-slate-600">
-            The backend is currently unreachable, so the site has gone quiet until it wakes back up.
+            The backend is currently unreachable, so the site has gone quiet.
           </p>
-          <div className="mt-8 flex items-center justify-center gap-2">
-            <Button onClick={handleBringUpThreds} isLoading={isContentLoading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
-              Bring up Threds
-            </Button>
-          </div>
         </div>
       </div>
     );

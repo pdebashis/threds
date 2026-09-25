@@ -8,6 +8,7 @@ interface CacheEntry<T> {
 
 const cache = new Map<string, CacheEntry<any>>();
 const CACHE_TTL_MS = 30000; // 30 seconds TTL
+const STATUS_TIMEOUT_MS = 30000;
 
 const fetchJson = async <T>(url: string, init: RequestInit = {}): Promise<T> => {
   const res = await fetch(url, init);
@@ -130,15 +131,21 @@ export const api = {
 
   // Check if Rails backend is online
   async checkStatus() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), STATUS_TIMEOUT_MS);
+
     try {
       const res = await fetch(`${API_BASE}/up`, {
         method: 'GET',
-        cache: 'no-store'
+        cache: 'no-store',
+        signal: controller.signal
       });
 
       return res.ok;
     } catch {
       return false;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 };
