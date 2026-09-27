@@ -12,6 +12,13 @@ export const BOARDS: BoardConfig[] = [
     color: 'text-blue-600 dark:text-blue-400'
   },
   {
+    id: BoardType.NEWS,
+    label: 'News',
+    description: 'Announcements, updates, and headline-worthy chatter.',
+    icon: 'fa-newspaper',
+    color: 'text-emerald-600 dark:text-emerald-400'
+  },
+  {
     id: BoardType.RANDOM,
     label: 'Random',
     description: 'Chaos, memes, and everything in between.',
