@@ -10,6 +10,7 @@ Rails.application.routes.draw do
 
   get  "/threds/:id", to: "threds#show"
   post "/threds/:id/posts", to: "posts#create"
+  post "/posts/:id/report", to: "posts#report"
   
   post "/upload", to: "uploads#create"
   # Defines the root path route ("/")

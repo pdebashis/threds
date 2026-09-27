@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_24_153811) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_27_120000) do
   create_table "posts", id: :string, force: :cascade do |t|
     t.string "thred_id", null: false
     t.string "author", default: "Anonymous"
@@ -19,6 +19,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_24_153811) do
     t.string "image_url"
     t.string "reply_to_id"
     t.index ["thred_id"], name: "index_posts_on_thred_id"
+  end
+
+  create_table "reported_posts", id: :string, force: :cascade do |t|
+    t.string "thred_id", null: false
+    t.string "post_id", null: false
+    t.text "post_content", null: false
+    t.string "report_reason", null: false
+    t.text "custom_reason"
+    t.datetime "reported_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["post_id"], name: "index_reported_posts_on_post_id"
+    t.index ["thred_id"], name: "index_reported_posts_on_thred_id"
   end
 
   create_table "threds", id: :string, force: :cascade do |t|

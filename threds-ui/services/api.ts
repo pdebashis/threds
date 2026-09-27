@@ -129,6 +129,22 @@ export const api = {
     return formatted;
   },
 
+  async reportPost(postId: string, reason: string, customReason?: string) {
+    const payload = {
+      reason,
+      ...(customReason && customReason.trim() ? { custom_reason: customReason } : {})
+    };
+
+    const result = await fetchJson<any>(`${API_BASE}/posts/${postId}/report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      body: JSON.stringify(payload),
+      cache: 'no-store'
+    });
+
+    return toCamelCase(result);
+  },
+
   // Check if Rails backend is online
   async checkStatus() {
     const controller = new AbortController();
