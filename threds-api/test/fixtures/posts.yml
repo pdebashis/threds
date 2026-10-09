@@ -1,17 +1,19 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  author: MyString
-  content: MyText
+  thred_id: test-thred-1
+  author: Anonymous
+  content: A fixture post with enough words
   timestamp: 1
-  image_url: MyString
-  reply_to_id: MyString
-  topic_id: MyString
+  reply_to_id:
+  image_url:
+  author_ip:
 
 two:
-  author: MyString
-  content: MyText
-  timestamp: 1
-  image_url: MyString
-  reply_to_id: MyString
-  topic_id: MyString
+  thred_id: test-thred-1
+  author: Anonymous
+  content: Another fixture post with enough words
+  timestamp: 2
+  reply_to_id:
+  image_url:
+  author_ip:

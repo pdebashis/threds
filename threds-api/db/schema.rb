@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_27_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_28_120000) do
   create_table "posts", id: :string, force: :cascade do |t|
     t.string "thred_id", null: false
     t.string "author", default: "Anonymous"
@@ -18,6 +18,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_27_120000) do
     t.bigint "timestamp", null: false
     t.string "image_url"
     t.string "reply_to_id"
+    t.string "author_ip", limit: 45
+    t.index ["author_ip"], name: "index_posts_on_author_ip"
     t.index ["thred_id"], name: "index_posts_on_thred_id"
   end
 

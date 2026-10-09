@@ -71,6 +71,7 @@ cd ~/threds
 git pull
 cd deploy/aws
 docker compose --env-file .env.aws up -d --build
+
 Check that it worked
 docker compose --env-file .env.aws ps
 

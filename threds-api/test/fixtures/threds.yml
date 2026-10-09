@@ -1,0 +1,4 @@
+test-thred-1:
+  board_type: w
+  subject: A fixture thred for tests
+  timestamp: 1
