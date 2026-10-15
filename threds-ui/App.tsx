@@ -55,6 +55,11 @@ const updateUrl = (route: RouteState) => {
   window.history.pushState({ ...route }, '', path);
 };
 
+// Time of the last manual thred refresh, shown next to the refresh control.
+const formatRefreshTime = (timestamp: number) => {
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
 // --- Main Application ---
 
 export default function App() {
@@ -84,6 +89,8 @@ export default function App() {
   // Loading & Error States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
 
   // Sync URL when navigation state changes
   useEffect(() => {
@@ -377,6 +384,27 @@ export default function App() {
     }
   }, []);
 
+  // Logic: Pull the newest posts for the open thred. Forces the API call past
+  // the 30s client cache, which is why it is useful for seeing other people's
+  // replies rather than just your own.
+  const handleRefreshThread = useCallback(async () => {
+    if (!activeThreadId) return;
+
+    setIsRefreshing(true);
+    setError(null);
+
+    try {
+      const updated = await api.fetchThread(activeThreadId, true);
+      setActiveThread(updated);
+      setLastRefreshedAt(Date.now());
+    } catch (err) {
+      console.error('Failed to refresh thread', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh thread');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [activeThreadId]);
+
   const showLoadingState = isOnline !== false && isContentLoading && (isHomeView || !activeThreadId || !activeThread);
 
   if (isOnline === false) {
@@ -469,16 +497,32 @@ export default function App() {
             {activeThreadId && activeThread ? (
               // --- Thread View ---
               <div className="animate-fade-in">
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex items-center justify-between gap-3">
                   <button 
                     onClick={() => setActiveThreadId(null)}
                     className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 text-sm font-medium"
                   >
                     <i className="fas fa-chevron-left"></i> Back to |-{currentBoard}-|
                   </button>
-                  <div className="text-right">
-                    <span className="text-xs text-gray-400 block uppercase tracking-wider">Thread Control</span>
-                    <span className="text-sm font-mono text-gray-600 dark:text-gray-300">{activeThread.id.slice(0,8)}</span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <span className="text-xs text-gray-400 block uppercase tracking-wider">Thread Control</span>
+                      <span className="text-sm font-mono text-gray-600 dark:text-gray-300">{activeThread.id.slice(0,8)}</span>
+                      {lastRefreshedAt !== null && (
+                        <span className="text-xs text-gray-400 block">
+                          Updated {formatRefreshTime(lastRefreshedAt)}
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={handleRefreshThread}
+                      isLoading={isRefreshing}
+                      title="Check for new posts"
+                      aria-label="Refresh thred"
+                    >
+                      <i className="fas fa-sync-alt" aria-hidden="true"></i> Refresh
+                    </Button>
                   </div>
                 </div>
 
