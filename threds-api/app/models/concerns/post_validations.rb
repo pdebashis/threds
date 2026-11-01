@@ -10,7 +10,8 @@ module PostValidations
   MINIMUM_WORDS = 3
 
   included do
-    validates :content, presence: { message: "can't be blank" }
+    before_validation :normalize_blank_content_for_image
+    validates :content, presence: { message: "can't be blank" }, unless: :image_attached?
     validate :content_has_enough_words_unless_image
   end
 
@@ -33,6 +34,10 @@ module PostValidations
   end
 
   private
+
+  def normalize_blank_content_for_image
+    self.content = "" if image_attached? && content.blank?
+  end
 
   def content_has_enough_words_unless_image
     # Leave blank content to the presence validation rather than stacking a

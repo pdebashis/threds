@@ -30,11 +30,11 @@ class PostTest < ActiveSupport::TestCase
     assert_not post.valid?
   end
 
-  test "rejects content-less posts even when an image is attached" do
+  test "accepts a content-less post when an image is attached" do
     post = build_post(content: nil, image_url: "https://example.com/a.png")
 
-    assert_not post.valid?
-    assert_includes post.errors[:content].to_sentence, "blank"
+    assert post.valid?, post.errors.full_messages.to_sentence
+    assert_equal "", post.content
   end
 
   test "reports the word count" do

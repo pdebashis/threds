@@ -46,6 +46,21 @@ class ThredCreationTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "accepts an image-only opening post" do
+    post "/boards/w/threds",
+         params: {
+           subject: "An image-only thred",
+           content: "",
+           imageUrl: "https://example.com/a.png"
+         },
+         as: :json,
+         headers: { "X-Forwarded-For" => "198.51.100.27" }
+
+    assert_response :success
+    assert_equal "", response.parsed_body.dig("posts", 0, "content")
+    assert_equal "https://example.com/a.png", response.parsed_body.dig("posts", 0, "imageUrl")
+  end
+
   test "rejects a thred without a subject" do
     create_thred("198.51.100.24", "an opening post with enough words", subject: nil)
 

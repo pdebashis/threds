@@ -65,6 +65,19 @@ class PostCooldownTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "an image-only reply is accepted" do
+    thred = other_thred
+
+    post "/threds/#{thred.id}/posts",
+         params: { content: "", imageUrl: "https://example.com/a.png" },
+         as: :json,
+         headers: { "X-Forwarded-For" => "198.51.100.12" }
+
+    assert_response :success
+    assert_equal "", response.parsed_body["content"]
+    assert_equal "https://example.com/a.png", response.parsed_body["imageUrl"]
+  end
+
   private
 
   def fixture_thred
