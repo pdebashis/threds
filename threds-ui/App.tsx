@@ -4,6 +4,7 @@ import { BOARDS, MAX_THREDS_PER_BOARD } from './constants';
 import { Button } from './components/Button';
 import { Navbar } from './components/Navbar';
 import { ThreadCard } from './components/ThreadCard';
+import { ProtectionBadge } from './components/ProtectionBadge';
 import { PostItem } from './components/PostItem';
 import { LoadingState } from './components/LoadingState';
 import { api } from './services/api';
@@ -79,6 +80,9 @@ export default function App() {
   const [isCreatingThred, setIsCreatingThred] = useState(false);
   const [subject, setSubject] = useState('');
   const [postContent, setPostContent] = useState('');
+  const [protectionStatus, setProtectionStatus] = useState<Thread['protectionStatus']>('public');
+  const [threadCode, setThreadCode] = useState('');
+  const [replyCode, setReplyCode] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   
@@ -266,6 +270,9 @@ export default function App() {
   const clearForm = useCallback(() => {
     setSubject('');
     setPostContent('');
+    setProtectionStatus('public');
+    setThreadCode('');
+    setReplyCode('');
     setSelectedFile(null);
     setFilePreview(null);
     setIsCreatingThred(false);
@@ -312,8 +319,12 @@ export default function App() {
 
   // Logic: Create Thred
   const handleCreateThread = useCallback(async (e: React.FormEvent) => {
-    if (!postContent.trim() && !selectedFile) return;
     e.preventDefault();
+    if (protectionStatus === 'code_protected') {
+      setError('Keyed threds are a UI preview only and cannot be saved yet.');
+      return;
+    }
+    if (!postContent.trim() && !selectedFile) return;
     setIsSubmitting(true);
     setError(null);
 
@@ -338,12 +349,16 @@ export default function App() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [postContent, selectedFile, currentBoard, subject, clearForm]);
+  }, [protectionStatus, postContent, selectedFile, currentBoard, subject, clearForm]);
 
   // Logic: Add Reply
   const handleReply = useCallback(async (e: React.FormEvent) => {
-    if (!postContent.trim() && !selectedFile) return;
     e.preventDefault();
+    if (activeThread?.protectionStatus === 'code_protected') {
+      setError('Key entry is a UI preview only and is not checked yet.');
+      return;
+    }
+    if (!postContent.trim() && !selectedFile) return;
 
     if (!activeThreadId) return;
 
@@ -375,7 +390,7 @@ export default function App() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [postContent, selectedFile, activeThreadId, replyTargetId, clearForm]);
+  }, [postContent, selectedFile, activeThreadId, activeThread, replyTargetId, clearForm]);
 
   const handleMessageKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
@@ -441,7 +456,7 @@ export default function App() {
           <div className="animate-fade-in bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
             <div className="mb-8 border-b border-gray-100 dark:border-gray-700 pb-4">
               <h1 className="text-2xl font-bold dark:text-white font-mono">Directory of Threds</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">Status: {isOnline ? 'Online' : 'Booting in 15s'} | Account: Anonymous</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">Status: {isOnline ? 'Online' : 'Booting'} | Account: Anonymous</p>
             </div>
             
             <div className="space-y-6 font-mono text-sm sm:text-base">
@@ -463,10 +478,13 @@ export default function App() {
                             <span className="text-gray-400 dark:text-gray-600 ml-4">|----</span>
                             <button 
                               onClick={() => navigateToThread(thread)}
-                              className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate max-w-full"
+                              className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
                             >
                               {thread.subject}
                             </button>
+                            <span className="ml-2">
+                              <ProtectionBadge status={thread.protectionStatus} compact />
+                            </span>
                           </div>
                         ))
                       ) : (
@@ -527,7 +545,15 @@ export default function App() {
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg p-6 mb-6">
-                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">{activeThread.subject}</h2>
+                   <div className="mb-4 flex flex-wrap items-center gap-3">
+                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{activeThread.subject}</h2>
+                       <ProtectionBadge status={activeThread.protectionStatus} />
+                     </div>
+                     <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                       {activeThread.protectionStatus === 'code_protected'
+                         ? 'Anyone can read this thred. A key is needed to add a post.'
+                         : 'Anyone can read and add posts to this thred.'}
+                     </p>
                    <div className="space-y-4">
                      {activeThread.posts.map((post, idx) => {
                         const repliesToThis = repliesMap.get(post.id) || [];
@@ -563,6 +589,27 @@ export default function App() {
                               <i className="fas fa-times"></i>
                             </button>
                         </div>
+                     )}
+                     {activeThread.protectionStatus === 'code_protected' && (
+                       <div className="mb-2 max-w-sm">
+                         <label htmlFor="reply-code" className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                           Thred key
+                         </label>
+                         <input
+                           id="reply-code"
+                           type="password"
+                           autoComplete="off"
+                           required
+                           value={replyCode}
+                           onChange={(e) => setReplyCode(e.target.value)}
+                           disabled={isSubmitting}
+                           placeholder="Enter key to add a post"
+                           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                         />
+                         <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                           Anyone can read this thred. A key is needed to add a post.
+                         </p>
+                       </div>
                      )}
                      <form onSubmit={handleReply} className="flex gap-2">
                        <div className="flex-1 relative">
@@ -645,6 +692,86 @@ export default function App() {
                           placeholder="What is on your mind?"
                         />
                       </div>
+                      <fieldset>
+                        <legend className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">How people can post</legend>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                            protectionStatus === 'public'
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                              : 'border-gray-300 dark:border-gray-600'
+                          }`}>
+                            <input
+                              type="radio"
+                              name="thread-protection"
+                              value="public"
+                              checked={protectionStatus === 'public'}
+                              onChange={() => setProtectionStatus('public')}
+                              disabled={isSubmitting}
+                              className="mt-1 accent-blue-600"
+                            />
+                            <span>
+                              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                                <i className="fas fa-door-open text-emerald-600 dark:text-emerald-300" aria-hidden="true"></i>
+                                Open
+                              </span>
+                              <span className="block text-xs text-gray-500 dark:text-gray-400">Anyone can read and add posts.</span>
+                            </span>
+                          </label>
+                          <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                            protectionStatus === 'code_protected'
+                              ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                              : 'border-gray-300 dark:border-gray-600'
+                          }`}>
+                            <input
+                              type="radio"
+                              name="thread-protection"
+                              value="code_protected"
+                              checked={protectionStatus === 'code_protected'}
+                              onChange={() => setProtectionStatus('code_protected')}
+                              disabled={isSubmitting}
+                              className="mt-1 accent-amber-600"
+                            />
+                            <span>
+                              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                                <i className="fas fa-key text-amber-600 dark:text-amber-300" aria-hidden="true"></i>
+                                Keyed
+                              </span>
+                              <span className="block text-xs text-gray-500 dark:text-gray-400">Anyone can read; a key is needed to add posts.</span>
+                            </span>
+                          </label>
+                        </div>
+                      </fieldset>
+                      {protectionStatus === 'code_protected' && (
+                        <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900 dark:bg-amber-950/20">
+                          <div>
+                            <label htmlFor="thread-code" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Set a thred key
+                            </label>
+                            <input
+                              id="thread-code"
+                              type="password"
+                              autoComplete="new-password"
+                              required
+                              value={threadCode}
+                              onChange={(e) => setThreadCode(e.target.value)}
+                              disabled={isSubmitting}
+                              placeholder="Create a key"
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-xs">
+                            <span className="text-gray-600 dark:text-gray-300">Thred card:</span>
+                            <ProtectionBadge status="code_protected" compact />
+                            <span className="text-gray-600 dark:text-gray-300">Reply form:</span>
+                            <span className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                              Enter key to add a post
+                            </span>
+                          </div>
+                          <p className="text-xs text-amber-800 dark:text-amber-200">
+                            UI preview only — the selection and key are not saved or checked yet.
+                          </p>
+                        </div>
+                      )}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</label>
                         <textarea

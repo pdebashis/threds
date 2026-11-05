@@ -20,6 +20,7 @@ export interface Thread {
   subject: string;
   timestamp: number;
   posts: Post[];
+  protectionStatus?: 'public' | 'code_protected';
 }
 
 export interface BoardConfig {

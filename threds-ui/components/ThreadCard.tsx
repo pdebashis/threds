@@ -1,5 +1,6 @@
 import React from 'react';
 import { Thread } from '../types';
+import { ProtectionBadge } from './ProtectionBadge';
 
 interface ThreadCardProps {
   thread: Thread;
@@ -34,7 +35,10 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({ thread, onCli
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between mb-1">
-             <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate pr-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">{thread.subject}</h3>
+             <div className="flex min-w-0 items-center gap-2 pr-2">
+               <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">{thread.subject}</h3>
+               <ProtectionBadge status={thread.protectionStatus} compact />
+             </div>
              <span className="text-xs text-gray-400 font-mono whitespace-nowrap">{new Date(thread.timestamp).toLocaleDateString()}</span>
           </div>
           <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3 mb-2">{firstPost?.content}</p>
