@@ -47,11 +47,18 @@ class PostCooldownTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "a reply shorter than three words without an image is rejected" do
-    reply(fixture_thred, "198.51.100.8", "too short")
+  test "a short reply without an image is accepted" do
+    reply(fixture_thred, "198.51.100.8", "short")
+
+    assert_response :success
+    assert_equal "short", response.parsed_body["content"]
+  end
+
+  test "a blank reply without an image is rejected" do
+    reply(fixture_thred, "198.51.100.10", "")
 
     assert_response :unprocessable_entity
-    assert_includes response.parsed_body["error"], "at least 3 words"
+    assert_includes response.parsed_body["error"], "can't be blank"
   end
 
   test "a short reply is accepted when an image url is attached" do

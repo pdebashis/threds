@@ -7,24 +7,19 @@ class PostsController < ApplicationController
   def create
     thred = Thred.find(params[:id])
 
+    unless thred.accepts_post_key?(request.headers["X-Thred-Key"])
+      return render json: { error: "A valid thred key is required to add a post" }, status: :forbidden
+    end
+
     if thred.posts.count >= 101
       return render json: { error: "thred limit reached" }, status: :unprocessable_entity
     end
 
     return if enforce_post_cooldown!
 
-    # The word-count rule is decided by text before anything is uploaded, so a
-    # rejected reply never spends a Cloudinary upload.
-    unless content_words_sufficient?
-      return render json: { error: word_count_error }, status: :unprocessable_entity
-    end
-
     image_url = upload_image
 
-    # A supplied image that could not be stored leaves a short caption with
-    # nothing to lean on. Report the upload rather than a misleading word-count
-    # error.
-    if image_url.blank? && image_provided? && !content_words_sufficient_without_image?
+    if image_url.blank? && image_provided? && post_params[:content].blank?
       return render json: { error: "Image upload failed. Please try again." }, status: :unprocessable_entity
     end
 
@@ -105,24 +100,8 @@ class PostsController < ApplicationController
     end
   end
 
-  # An attached file counts as an image even before it has been uploaded, so a
-  # short caption alongside an image is allowed.
   def image_provided?
     params[:file].present? || post_params[:imageUrl].present?
-  end
-
-  def content_words_sufficient?
-    return true if image_provided?
-
-    content_words_sufficient_without_image?
-  end
-
-  def content_words_sufficient_without_image?
-    post_params[:content].to_s.split.length >= Post::MINIMUM_WORDS
-  end
-
-  def word_count_error
-    "Content must be at least #{Post::MINIMUM_WORDS} words unless an image is attached"
   end
 
   def report_reason

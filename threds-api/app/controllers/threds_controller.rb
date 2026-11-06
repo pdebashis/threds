@@ -20,18 +20,22 @@ class ThredsController < ApplicationController
 
     now = now_ms
 
-    # The submitted imageUrl is kept in the message while the text rule is
-    # checked, so a short post is told the real reason it was refused.
-    unless content_words_sufficient_with_image?
-      return render json: { error: word_count_error }, status: :unprocessable_entity
-    end
-
     thred = Thred.new(
       id: SecureRandom.uuid,
       board_type: params[:board_type],
       subject: thred_params[:subject],
+      protection_status: protection_status,
       timestamp: now
     )
+
+    if protection_status == "code_protected"
+      thread_code = thred_params[:threadCode].to_s
+      if thread_code.blank?
+        return render json: { error: "Thred key can't be blank" }, status: :unprocessable_entity
+      end
+
+      thred.set_thread_code(thread_code)
+    end
 
     unless thred.valid?
       return render json: { error: thred.errors.full_messages.to_sentence }, status: :unprocessable_entity
@@ -39,7 +43,7 @@ class ThredsController < ApplicationController
 
     image_url = upload_image
 
-    if image_url.blank? && image_provided? && !content_words_sufficient_without_image?
+    if image_url.blank? && image_provided? && thred_params[:content].blank?
       return render json: { error: "Image upload failed. Please try again." }, status: :unprocessable_entity
     end
 
@@ -74,25 +78,18 @@ class ThredsController < ApplicationController
   private
 
   def thred_params
-    params.permit(:board_type, :subject, :content, :imageUrl, :replyToId)
+    params.permit(:board_type, :subject, :content, :imageUrl, :replyToId, :protectionStatus, :threadCode)
   end
 
-  # An attached file counts as an image even before it has been uploaded, so a
-  # short caption alongside an image is allowed.
+  def protection_status
+    status = thred_params[:protectionStatus].presence || "public"
+    return status if Thred::PROTECTION_STATUSES.include?(status)
+
+    nil
+  end
+
   def image_provided?
     params[:file].present? || thred_params[:imageUrl].present?
-  end
-
-  def content_words_sufficient_without_image?
-    thred_params[:content].to_s.split.length >= Post::MINIMUM_WORDS
-  end
-
-  def content_words_sufficient_with_image?
-    image_provided? || content_words_sufficient_without_image?
-  end
-
-  def word_count_error
-    "Content must be at least #{Post::MINIMUM_WORDS} words unless an image is attached"
   end
 
   def upload_image
@@ -121,6 +118,7 @@ class ThredsController < ApplicationController
       id: thred.id,
       boardId: thred.board_type,
       subject: thred.subject,
+      protectionStatus: thred.protection_status,
       timestamp: thred.timestamp,
       posts: thred.posts.order(:timestamp).map do |p|
         {

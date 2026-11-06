@@ -5,15 +5,8 @@ class PostTest < ActiveSupport::TestCase
     Post.new({ thred: threds(:"test-thred-1"), author: "Anonymous", timestamp: 1 }.merge(attributes))
   end
 
-  test "rejects content shorter than the minimum word count when no image is attached" do
-    post = build_post(content: "too short")
-
-    assert_not post.valid?
-    assert_includes post.errors[:content].to_sentence, "at least 3 words"
-  end
-
-  test "accepts content at the minimum word count" do
-    post = build_post(content: "three whole words")
+  test "accepts a short post without an image" do
+    post = build_post(content: "short")
 
     assert post.valid?, post.errors.full_messages.to_sentence
   end
@@ -37,8 +30,4 @@ class PostTest < ActiveSupport::TestCase
     assert_equal "", post.content
   end
 
-  test "reports the word count" do
-    assert_equal 3, build_post(content: "one two three").word_count
-    assert_equal 0, build_post(content: nil).word_count
-  end
 end

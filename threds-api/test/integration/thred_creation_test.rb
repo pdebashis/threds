@@ -25,12 +25,18 @@ class ThredCreationTest < ActionDispatch::IntegrationTest
     assert_equal "198.51.100.21", thred.posts.first.author_ip
   end
 
-  test "rejects an opening post shorter than three words without an image" do
-    create_thred("198.51.100.22", "too short")
+  test "accepts a short opening post without an image" do
+    create_thred("198.51.100.22", "short")
+
+    assert_response :success
+    assert_equal "short", response.parsed_body.dig("posts", 0, "content")
+  end
+
+  test "rejects a blank opening post without an image" do
+    create_thred("198.51.100.28", "")
 
     assert_response :unprocessable_entity
-    assert_includes response.parsed_body["error"], "at least 3 words"
-    assert_equal 0, Thred.where(subject: "A new thred subject").count
+    assert_includes response.parsed_body["error"], "can't be blank"
   end
 
   test "accepts a short opening post when an image url is attached" do

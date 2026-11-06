@@ -48,6 +48,21 @@
       • Rate Limiting & CORS: Configured with rack-attack and rack-cors.
       • Deployment: Dockerized (Dockerfile) and configured for hosting platforms like Render.
 
+## Grid module
+
+Grid is a second module beside the Imageboard (it is **not** a board and is never
+cast to `BoardType`). It lives at `#/grid` and `#/grid/:id`:
+
+* `threds-ui/routing.ts` — hand-written hash parsing extended with the Grid routes.
+* `threds-ui/grid/` — Grid types, palette, Excel-label conversion, virtualization,
+  bounded cell cache, and the directory/item/canvas/panel views.
+* `threds-ui/services/gridApi.ts` — typed Grid API contract.
+
+This iteration is UI-only: the Rails `Grid` endpoints are not implemented yet, so
+the module falls back to a clearly labelled in-browser preview data source until
+they exist. See [GRID_MODULE.md](GRID_MODULE.md) for the endpoint contract to
+implement, the access-key rules, and the test commands.
+
 ## Run locally
 
 **Prerequisites:**  Node.js
@@ -56,6 +71,8 @@
    `npm install`
 2. Run the app:
    `npm run dev`
+3. Run the unit tests (Node 22.6+, built-in runner):
+   `npm test`
 
 ## Deploy
 

@@ -1,3 +1,5 @@
+import { fetchJson, toCamelCase } from './http';
+
 const API_BASE = import.meta.env.VITE_API_URL;
 
 // Simple in-memory cache for fast instant rendering on board/thread navigation
@@ -9,34 +11,6 @@ interface CacheEntry<T> {
 const cache = new Map<string, CacheEntry<any>>();
 const CACHE_TTL_MS = 30000; // 30 seconds TTL
 const STATUS_TIMEOUT_MS = 30000;
-
-const fetchJson = async <T>(url: string, init: RequestInit = {}): Promise<T> => {
-  const res = await fetch(url, init);
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `Request failed: ${res.status}`);
-  }
-
-  return res.json() as Promise<T>;
-};
-
-// Optimized helper function to convert to camelCase
-const toCamelCase = (obj: any): any => {
-  if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) {
-    return obj.map(toCamelCase);
-  }
-  
-  const result: Record<string, any> = {};
-  for (const key of Object.keys(obj)) {
-    const camelKey = key.includes('_') 
-      ? key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-      : key;
-    result[camelKey] = toCamelCase(obj[key]);
-  }
-  return result;
-};
 
 export const api = {
   clearCache(keyPrefix?: string) {
@@ -84,7 +58,13 @@ export const api = {
   },
 
   // Create a new thread
-  async createThread(boardType: string, data: { subject: string; content: string; imageUrl?: string }) {
+  async createThread(boardType: string, data: {
+    subject: string;
+    content: string;
+    imageUrl?: string;
+    protectionStatus?: 'public' | 'code_protected';
+    threadCode?: string;
+  }) {
     const thread = await fetchJson<any>(`${API_BASE}/boards/${boardType}/threds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
@@ -116,10 +96,18 @@ export const api = {
   },
 
   // Add a reply to a thread
-  async createPost(threadId: string, data: { content: string; replyToId?: string; imageUrl?: string }) {
+  async createPost(
+    threadId: string,
+    data: { content: string; replyToId?: string; imageUrl?: string },
+    threadCode?: string,
+  ) {
     const post = await fetchJson<any>(`${API_BASE}/threds/${threadId}/posts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        ...(threadCode ? { 'X-Thred-Key': threadCode } : {}),
+      },
       body: JSON.stringify(data),
       cache: 'no-store'
     });
