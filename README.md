@@ -50,18 +50,16 @@
 
 ## Grid module
 
-Grid is a second module beside the Imageboard (it is **not** a board and is never
-cast to `BoardType`). It lives at `#/grid` and `#/grid/:id`:
+Grid is a board (`BoardType::GRID`, id `g`) beside the Imageboard and lives at
+`#/board/g` and `#/board/g/item/:id`:
 
 * `threds-ui/routing.ts` — hand-written hash parsing extended with the Grid routes.
 * `threds-ui/grid/` — Grid types, palette, Excel-label conversion, virtualization,
   bounded cell cache, and the directory/item/canvas/panel views.
-* `threds-ui/services/gridApi.ts` — typed Grid API contract.
+* `threds-ui/services/gridApi.ts` — typed HTTP client for the Rails Grid API.
 
-This iteration is UI-only: the Rails `Grid` endpoints are not implemented yet, so
-the module falls back to a clearly labelled in-browser preview data source until
-they exist. See [GRID_MODULE.md](GRID_MODULE.md) for the endpoint contract to
-implement, the access-key rules, and the test commands.
+Grid data is read from and written to the Rails API/database. See
+[GRID_MODULE.md](GRID_MODULE.md) for the API, access-key rules, and test commands.
 
 ## Run locally
 
@@ -84,7 +82,6 @@ implement, the access-key rules, and the test commands.
 Local
 
 rails s : Runs backend on 3000 port
-
 
 
 

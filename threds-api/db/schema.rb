@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_06_225000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_07_000000) do
   create_table "grid_cell_formats", force: :cascade do |t|
     t.string "grid_item_id", null: false
     t.integer "row_index", null: false
@@ -36,7 +36,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_06_225000) do
     t.check_constraint "row_index BETWEEN 1 AND 500 AND column_index BETWEEN 1 AND 500", name: "grid_cells_coordinates_valid"
   end
 
-  create_table "grid_items", id: :string, force: :cascade do |t|
+  create_table "grid_threds", id: :string, force: :cascade do |t|
     t.string "subject", limit: 120, null: false
     t.string "access", default: "public", null: false
     t.string "key_salt"
@@ -45,7 +45,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_06_225000) do
     t.integer "max_columns", default: 500, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["updated_at"], name: "index_grid_items_on_updated_at"
+    t.index ["updated_at"], name: "index_grid_threds_on_updated_at"
     t.check_constraint "(access = 'public' AND key_salt IS NULL AND key_digest IS NULL) OR (access = 'keyed' AND key_salt IS NOT NULL AND key_digest IS NOT NULL)", name: "grid_items_key_valid"
     t.check_constraint "access IN ('public', 'keyed')", name: "grid_items_access_valid"
     t.check_constraint "max_rows BETWEEN 1 AND 500 AND max_columns BETWEEN 1 AND 500", name: "grid_items_dimensions_valid"
@@ -94,7 +94,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_06_225000) do
     t.string "thread_code_digest"
   end
 
-  add_foreign_key "grid_cell_formats", "grid_items", on_delete: :cascade
-  add_foreign_key "grid_cells", "grid_items", on_delete: :cascade
+  add_foreign_key "grid_cell_formats", "grid_threds", column: "grid_item_id", on_delete: :cascade
+  add_foreign_key "grid_cells", "grid_threds", column: "grid_item_id", on_delete: :cascade
   add_foreign_key "grid_posts", "grid_cells", on_delete: :cascade
 end

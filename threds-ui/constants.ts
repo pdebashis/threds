@@ -24,6 +24,13 @@ export const BOARDS: BoardConfig[] = [
     description: 'Chaos, memes, and everything in between.',
     icon: 'fa-shuffle',
     color: 'text-orange-600 dark:text-orange-400'
+  },
+  {
+    id: BoardType.GRID,
+    label: 'Grid',
+    description: 'Collaborative spreadsheet-like text boards.',
+    icon: 'fa-table-cells-large',
+    color: 'text-indigo-600 dark:text-indigo-400'
   }
   // {
   //   id: BoardType.TRAVEL,

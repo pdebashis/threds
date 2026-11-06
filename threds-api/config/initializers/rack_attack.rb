@@ -23,6 +23,16 @@ Rack::Attack.throttle('posts/create', limit: 5, period: 1.minute) do |req|
   end
 end
 
+# Limit Grid creation and write attempts, including failed keyed writes.
+Rack::Attack.throttle('grid/items/create', limit: 3, period: 1.hour) do |req|
+  req.ip if req.post? && req.path == '/grid/items'
+end
+
+Rack::Attack.throttle('grid/writes', limit: 10, period: 1.minute) do |req|
+  req.ip if %w[POST PATCH].include?(req.request_method) &&
+            req.path.match?(%r{^/grid/items/[^/]+/cells/\d+/\d+/(posts|format)$})
+end
+
 # Throttle uploads: max 20 per IP per hour.
 # Uploads bill against the Cloudinary account, so they are capped even though a
 # rejected post never reaches the uploader.

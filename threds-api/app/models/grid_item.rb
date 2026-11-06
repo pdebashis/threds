@@ -1,10 +1,13 @@
 require "openssl"
 
 class GridItem < ApplicationRecord
+  self.table_name = "grid_threds"
   self.primary_key = "id"
 
   ACCESS_TYPES = %w[public keyed].freeze
   MAX_DIMENSION = 500
+  MIN_ACCESS_KEY_LENGTH = 8
+  MAX_ACCESS_KEY_LENGTH = 200
   KEY_ITERATIONS = 120_000
 
   has_many :cells, class_name: "GridCell", dependent: :destroy, inverse_of: :grid_item

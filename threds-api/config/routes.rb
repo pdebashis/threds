@@ -11,6 +11,14 @@ Rails.application.routes.draw do
   get  "/threds/:id", to: "threds#show"
   post "/threds/:id/posts", to: "posts#create"
   post "/posts/:id/report", to: "posts#report"
+
+  get    "/grid/items", to: "grid#index"
+  post   "/grid/items", to: "grid#create"
+  get    "/grid/items/:item_id", to: "grid#show"
+  get    "/grid/items/:item_id/cells", to: "grid#cells"
+  get    "/grid/items/:item_id/cells/:row/:column", to: "grid#cell"
+  post   "/grid/items/:item_id/cells/:row/:column/posts", to: "grid#create_post"
+  patch  "/grid/items/:item_id/cells/:row/:column/format", to: "grid#update_format"
   
   post "/upload", to: "uploads#create"
   # Defines the root path route ("/")

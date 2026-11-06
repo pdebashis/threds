@@ -1,25 +1,22 @@
 # Grid module
 
-Grid is a second module inside Threds, next to the Imageboard. The frontend and
-Rails persistence schema are implemented. The Rails API endpoints are still
-pending; when `/grid/items` answers, the UI switches over automatically.
+Grid is a second module inside Threds, next to the Imageboard. Its frontend,
+Rails persistence, and API endpoints are implemented.
 
 ## What exists
 
 | Area | Where |
 | --- | --- |
-| Route parsing (`#/grid`, `#/grid/:id`) | `threds-ui/routing.ts` (+ `routing.test.ts`) |
+| Route parsing (`#/board/g`, `#/board/g/item/:id`; legacy `#/grid` links supported) | `threds-ui/routing.ts` (+ `routing.test.ts`) |
 | Grid types, palette, coordinates, virtualization math, bounded cache | `threds-ui/grid/*.ts` (+ tests) |
-| Typed Grid API contract | `threds-ui/services/gridApi.ts` |
-| Preview data source (no backend) | `threds-ui/services/gridPreviewApi.ts` |
-| Data-source handshake | `threds-ui/services/gridClient.ts` |
+| Typed HTTP Grid API client | `threds-ui/services/gridApi.ts` |
 | Views | `threds-ui/grid/GridView.tsx`, `GridDirectory.tsx`, `GridItemView.tsx`, `GridCanvas.tsx`, `GridCellPanel.tsx` |
 | Shared JSON transport | `threds-ui/services/http.ts` |
 | Rails persistence schema and models | `threds-api/db/migrate/20261106225000_create_grid_tables.rb`, `threds-api/app/models/grid_*.rb` |
+| Rails API endpoints | `threds-api/app/controllers/grid_controller.rb`, `threds-api/config/routes.rb` |
 
-Imageboard routes, boards, `BoardType`, serializers, Post rules and image
-handling are untouched. Grid ids never enter `BoardType`; `App.tsx` keeps
-`activeModule` and `gridItemId` as separate state.
+Grid is registered as board type `g`; Grid item ids remain separate from
+Imageboard thread ids.
 
 ## Product behaviour
 
@@ -53,10 +50,11 @@ handling are untouched. Grid ids never enter `BoardType`; `App.tsx` keeps
   URL, response, or storage. Rails hashes the key with PBKDF2-HMAC-SHA256 and
   must enforce it on every write, including throttling failed attempts.
 
-## Backend contract to implement
+## Backend API
 
 All payloads are camelCase JSON, serialized explicitly like the existing
-Imageboard controllers. Dates/timestamps are epoch milliseconds.
+Imageboard controllers. Dates/timestamps are epoch milliseconds. Grid routes
+are registered in Rails and the UI sends requests to `VITE_API_URL`.
 
 ```
 GET    /grid/items                                    -> GridItem[]  (newest activity first)
@@ -116,7 +114,7 @@ Requirements the frontend relies on:
 * Palette keys are validated against a finite list; arbitrary colours are
   rejected with `422`.
 * Missing/invalid key on a write: `403` with `{ "error": "..." }`.
-  Rate-limit failed attempts (for example 10/minute per IP).
+  Grid writes are rate-limited per IP.
 * Indexes: `(grid_item_id, row, column)` unique for cells and formatting, plus
   `grid_item_id` for item listing. Must work on SQLite and PostgreSQL.
 * No editing or deleting posts; no accounts.
@@ -129,8 +127,5 @@ npm run dev
 npm test        # Node >= 22.6 (uses built-in test runner + type stripping)
 ```
 
-While the Grid API is absent, `gridClient.ts` probes `/grid/items` once and
-falls back to the in-browser preview (banner shown, data kept in
-`sessionStorage`). The preview starts empty; create a Grid to add entries.
-Previously seeded preview examples are removed on load. Force a mode with
-`VITE_GRID_API_MODE=live` or `VITE_GRID_API_MODE=preview`.
+The Grid UI uses the configured Rails API URL (`VITE_API_URL`) directly. Grid
+items and their cell data are persisted by the Rails API, not browser storage.

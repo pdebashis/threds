@@ -40,27 +40,36 @@ test('normalizePath keeps the original cleanup rules', () => {
   assert.deepEqual(parseRoute('#/board/r/'), parseRoute('#/board/r'));
 });
 
-test('grid routes are their own module state', () => {
+test('grid routes use the grid board and preserve legacy links', () => {
   assert.deepEqual(parseRoute('#/grid'), {
     module: 'grid',
     isHomeView: false,
+    currentBoard: 'g',
     gridItemId: undefined,
   });
 
   assert.deepEqual(parseRoute('#/grid/item-42'), {
     module: 'grid',
     isHomeView: false,
+    currentBoard: 'g',
     gridItemId: 'item-42',
   });
 
-  // A Grid id that happens to look like a board letter is still just an id.
-  assert.deepEqual(parseRoute('#/grid/w'), {
+  assert.deepEqual(parseRoute('#/board/g'), {
     module: 'grid',
     isHomeView: false,
+    currentBoard: 'g',
+    gridItemId: undefined,
+  });
+
+  assert.deepEqual(parseRoute('#/board/g/item/w'), {
+    module: 'grid',
+    isHomeView: false,
+    currentBoard: 'g',
     gridItemId: 'w',
   });
 
-  assert.equal(parseRoute('#/grid/item-42').currentBoard, undefined);
+  assert.equal(parseRoute('#/grid/w').gridItemId, 'w');
 });
 
 test('routeToPath reproduces the same hashes', () => {
@@ -73,15 +82,15 @@ test('routeToPath reproduces the same hashes', () => {
     routeToPath({ module: 'imageboard', isHomeView: false, currentBoard: BOARD_R, activeThreadId: 'abc' }),
     '#/board/r/thread/abc',
   );
-  assert.equal(routeToPath({ module: 'grid', isHomeView: false }), '#/grid');
+  assert.equal(routeToPath({ module: 'grid', isHomeView: false }), '#/board/g');
   assert.equal(
     routeToPath({ module: 'grid', isHomeView: false, gridItemId: 'item 42/x' }),
-    '#/grid/item%2042%2Fx',
+    '#/board/g/item/item%2042%2Fx',
   );
 });
 
 test('paths round-trip through the parser', () => {
-  const paths = ['#/', '#/board/w', '#/board/t/thread/z-9', '#/grid', '#/grid/abc'];
+  const paths = ['#/', '#/board/w', '#/board/t/thread/z-9', '#/board/g', '#/board/g/item/abc'];
   for (const path of paths) {
     const parsed = parseRoute(path);
     assert.deepEqual(parseRoute(routeToPath(parsed)), parsed, path);
@@ -89,8 +98,8 @@ test('paths round-trip through the parser', () => {
 });
 
 test('a grid item id is decoded once and never treated as a board', () => {
-  const route = parseRoute('#/grid/a%2Fb');
+  const route = parseRoute('#/board/g/item/a%2Fb');
   assert.equal(route.module, 'grid');
   assert.equal(route.gridItemId, 'a/b');
-  assert.equal(route.currentBoard, undefined);
+  assert.equal(route.currentBoard, 'g');
 });

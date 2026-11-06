@@ -1,17 +1,16 @@
 import type { BoardType } from './types';
 
-// The app has two independent modules. Imageboard boards are identified by
-// BoardType letters (w/n/r/t); Grid is a separate module whose ids are opaque
-// strings. They are deliberately never mixed in the same field.
+// The app shares board navigation while keeping the Grid's item id separate
+// from Imageboard thread ids.
 export type AppModule = 'imageboard' | 'grid';
 
 export interface RouteState {
   module: AppModule;
-  /** True only for the imageboard directory at "#/". Grid has its own directory. */
+  /** True only for the global directory at "#/". */
   isHomeView: boolean;
   currentBoard?: BoardType;
   activeThreadId?: string;
-  /** Undefined means "Grid directory"; set means a specific Grid item. */
+  /** Set when the Grid board is open to a specific Grid item. */
   gridItemId?: string;
 }
 
@@ -39,17 +38,27 @@ export const parseRoute = (rawPath: string): RouteState => {
     return { module: 'imageboard', isHomeView: true };
   }
 
-  // Grid is matched before boards so a Grid id can never be read as a board.
+  // Keep the old Grid URLs working while new navigation uses the board route.
   if (segments[0] === GRID_ROUTE_PREFIX) {
     return {
       module: 'grid',
       isHomeView: false,
+      currentBoard: 'g',
       gridItemId: segments[1] ? safeDecode(segments[1]) : undefined,
     };
   }
 
   if (segments[0] === BOARD_ROUTE_PREFIX && segments[1]) {
     const boardId = segments[1] as BoardType;
+    if (boardId === 'g') {
+      return {
+        module: 'grid',
+        isHomeView: false,
+        currentBoard: 'g',
+        gridItemId: segments[2] === 'item' && segments[3] ? safeDecode(segments[3]) : undefined,
+      };
+    }
+
     if (segments[2] === 'thread' && segments[3]) {
       return { module: 'imageboard', isHomeView: false, currentBoard: boardId, activeThreadId: segments[3] };
     }
@@ -67,7 +76,9 @@ export const parseUrlRoute = (): RouteState => {
 
 export const routeToPath = (route: RouteState): string => {
   if (route.module === 'grid') {
-    return route.gridItemId ? `#/${GRID_ROUTE_PREFIX}/${encodeURIComponent(route.gridItemId)}` : `#/${GRID_ROUTE_PREFIX}`;
+    return route.gridItemId
+      ? `#/${BOARD_ROUTE_PREFIX}/g/item/${encodeURIComponent(route.gridItemId)}`
+      : `#/${BOARD_ROUTE_PREFIX}/g`;
   }
 
   if (route.isHomeView || !route.currentBoard) {

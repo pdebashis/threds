@@ -4,7 +4,6 @@ import { Button } from '../components/Button';
 import { LoadingState } from '../components/LoadingState';
 import { describeRequestError } from '../services/http';
 import type { GridApi } from '../services/gridApi';
-import type { GridApiMode } from '../services/gridClient';
 import { cellKey, columnIndexToLabel } from './coordinates';
 import { formatGridClock } from './format';
 import { GridAccessBadge, gridAccessExplanation } from './GridAccessBadge';
@@ -19,7 +18,6 @@ const INITIAL_RANGE: GridCellQuery = { rowStart: 1, rowEnd: 24, columnStart: 1, 
 
 export interface GridItemViewProps {
   api: GridApi;
-  mode: GridApiMode;
   itemId: string;
   onBack: () => void;
 }
@@ -28,7 +26,7 @@ export interface GridItemViewProps {
  * One Grid item: header with access state, the virtualized grid, and the
  * selected-cell panel. Reads and writes go through the typed Grid API only.
  */
-export const GridItemView: React.FC<GridItemViewProps> = ({ api, mode, itemId, onBack }) => {
+export const GridItemView: React.FC<GridItemViewProps> = ({ api, itemId, onBack }) => {
   const [item, setItem] = useState<GridItem | null>(null);
   const [itemStatus, setItemStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [itemError, setItemError] = useState<string | null>(null);
@@ -216,7 +214,7 @@ export const GridItemView: React.FC<GridItemViewProps> = ({ api, mode, itemId, o
     );
   }
 
-  const pollHint = mode === 'preview' ? 'preview data' : `live · every ${Math.round(GRID_POLL_INTERVAL_MS / 1000)}s`;
+  const pollHint = `live · every ${Math.round(GRID_POLL_INTERVAL_MS / 1000)}s`;
 
   return (
     <div className="animate-fade-in">

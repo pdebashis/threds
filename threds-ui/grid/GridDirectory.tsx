@@ -7,12 +7,10 @@ import { GridAccessBadge } from './GridAccessBadge';
 import { formatGridTimestamp } from './format';
 import { describeRequestError } from '../services/http';
 import type { GridApi } from '../services/gridApi';
-import type { GridApiMode } from '../services/gridClient';
 import type { GridAccess, GridItem } from './types';
 
 export interface GridDirectoryProps {
   api: GridApi;
-  mode: GridApiMode;
   onOpenItem: (itemId: string) => void;
 }
 
@@ -20,9 +18,9 @@ type LoadState = 'loading' | 'ready' | 'error';
 
 /**
  * Grid directory: the list of Grid items plus a create form. The Grid has its
- * own module state; it is not a board and never appears in BoardType.
+ * own data model, while appearing as the Grid board in shared navigation.
  */
-export const GridDirectory: React.FC<GridDirectoryProps> = ({ api, mode, onOpenItem }) => {
+export const GridDirectory: React.FC<GridDirectoryProps> = ({ api, onOpenItem }) => {
   const [items, setItems] = useState<GridItem[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -112,12 +110,9 @@ export const GridDirectory: React.FC<GridDirectoryProps> = ({ api, mode, onOpenI
     <div className="animate-fade-in">
       <div className="mb-6 flex flex-col gap-4 border-b border-gray-200 pb-6 dark:border-gray-700 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-mono text-3xl font-bold text-gray-900 dark:text-white">|-grid-|</h1>
+          <h1 className="font-mono text-3xl font-bold text-gray-900 dark:text-white">|-g-| - Grid</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Spreadsheet-like text threds. Up to 500 rows and 500 columns, one post stack per cell.
-          </p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-            250,000 cells per Grid, but only the visible window is ever rendered.
           </p>
         </div>
 
@@ -326,12 +321,6 @@ export const GridDirectory: React.FC<GridDirectoryProps> = ({ api, mode, onOpenI
         </ul>
       )}
 
-      {mode === 'preview' && (
-        <p className="mt-6 text-center text-[11px] text-gray-400 dark:text-gray-500">
-          Preview data source: Grid items you create here live in this browser tab until the Rails Grid API is
-          implemented.
-        </p>
-      )}
     </div>
   );
 };

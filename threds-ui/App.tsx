@@ -12,7 +12,9 @@ import { parseUrlRoute, updateUrl, type AppModule } from './routing';
 import { GridView } from './grid/GridView';
 import { GridAccessBadge } from './grid/GridAccessBadge';
 import type { GridItem } from './grid/types';
-import { resolveGridClient } from './services/gridClient';
+import { createHttpGridApi } from './services/gridApi';
+
+const gridApi = createHttpGridApi();
 
 // Time of the last manual thred refresh, shown next to the refresh control.
 const formatRefreshTime = (timestamp: number) => {
@@ -24,8 +26,8 @@ const formatRefreshTime = (timestamp: number) => {
 export default function App() {
   const initialRoute = parseUrlRoute();
 
-  // Two independent modules: the Imageboard (boards/threds) and Grid. A Grid
-  // id is never stored in `currentBoard` and never compared to a BoardType.
+  // Grid is a board for navigation, but its items still use separate state
+  // because they are not Imageboard threads.
   const [activeModule, setActiveModule] = useState<AppModule>(initialRoute.module);
   const [gridItemId, setGridItemId] = useState<string | null>(initialRoute.gridItemId ?? null);
 
@@ -82,6 +84,7 @@ export default function App() {
 
       if (route.module === 'grid') {
         setIsHomeView(false);
+        setCurrentBoard(BoardType.GRID);
         setGridItemId(route.gridItemId ?? null);
         setActiveThreadId(null);
         setActiveThread(null);
@@ -156,7 +159,7 @@ export default function App() {
       try {
         if (isHomeView) {
           const allResults = await Promise.all(
-            BOARDS.map((board) => api.fetchThreds(board.id))
+            BOARDS.filter((board) => board.id !== BoardType.GRID).map((board) => api.fetchThreds(board.id))
           );
 
           if (!isCancelled) {
@@ -197,8 +200,7 @@ export default function App() {
 
     const loadGridItems = async () => {
       try {
-        const { api } = await resolveGridClient();
-        const items = await api.listItems({ signal: controller.signal });
+        const items = await gridApi.listItems({ signal: controller.signal });
         if (!isCancelled) {
           setDirectoryGridItems(items);
           setGridDirectoryState('ready');
@@ -311,6 +313,19 @@ export default function App() {
 
   // Navigation handlers
   const navigateToBoard = useCallback((boardId: BoardType) => {
+    if (boardId === BoardType.GRID) {
+      setActiveModule('grid');
+      setGridItemId(null);
+      setCurrentBoard(BoardType.GRID);
+      setActiveThreadId(null);
+      setActiveThread(null);
+      setIsHomeView(false);
+      setIsCreatingThred(false);
+      setReplyTargetId(null);
+      setError(null);
+      return;
+    }
+
     if (activeModule === 'imageboard' && !isHomeView && !activeThreadId && currentBoard === boardId) return;
 
     setActiveModule('imageboard');
@@ -344,18 +359,9 @@ export default function App() {
     setIsContentLoading(true);
   }, []);
 
-  // Grid module navigation. Grid ids live in their own state field.
-  const goToGrid = useCallback(() => {
-    setActiveModule('grid');
-    setGridItemId(null);
-    setIsHomeView(false);
-    setIsCreatingThred(false);
-    setReplyTargetId(null);
-    setError(null);
-  }, []);
-
   const openGridItem = useCallback((itemId: string) => {
     setActiveModule('grid');
+    setCurrentBoard(BoardType.GRID);
     setGridItemId(itemId);
     setIsHomeView(false);
   }, []);
@@ -467,8 +473,8 @@ export default function App() {
     isContentLoading &&
     (isHomeView || !activeThreadId || !activeThread);
 
-  // The hibernation screen is Imageboard-specific: the Grid module manages its
-  // own availability (and can still offer its preview data source).
+  // The hibernation screen is Imageboard-specific; Grid reports API failures
+  // in its own directory and item views.
   if (isOnline === false && isImageboardModule) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-800 flex items-center justify-center px-4">
@@ -490,7 +496,6 @@ export default function App() {
         currentBoard={currentBoard} 
         onBoardChange={navigateToBoard}
         onHome={goHome}
-        onGrid={goToGrid}
         isGridModule={activeModule === 'grid'}
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
@@ -513,7 +518,7 @@ export default function App() {
             </div>
             
             <div className="space-y-6 font-mono text-sm sm:text-base">
-              {BOARDS.map((board) => {
+              {BOARDS.filter((board) => board.id !== BoardType.GRID).map((board) => {
                 const boardThreds = threds.filter(t => t.boardId === board.id);
                 return (
                   <div key={board.id} className="group">
@@ -551,7 +556,7 @@ export default function App() {
               })}
               <div className="group">
                 <button
-                  onClick={goToGrid}
+                  onClick={() => navigateToBoard(BoardType.GRID)}
                   className="flex items-center gap-2 font-bold text-indigo-600 transition-colors hover:text-blue-500 dark:text-indigo-400"
                 >
                   <span className="text-gray-400 dark:text-gray-600">|-</span>

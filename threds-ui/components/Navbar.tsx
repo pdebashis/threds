@@ -6,7 +6,6 @@ interface NavbarProps {
   currentBoard: BoardType;
   onBoardChange: (b: BoardType) => void;
   onHome: () => void;
-  onGrid: () => void;
   isGridModule: boolean;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
@@ -17,7 +16,6 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
   currentBoard,
   onBoardChange,
   onHome,
-  onGrid,
   isGridModule,
   isDarkMode,
   toggleDarkMode,
@@ -40,30 +38,16 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({
                 key={board.id}
                 onClick={() => onBoardChange(board.id)}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                  !isHomeView && !isGridModule && currentBoard === board.id
+                  (board.id === BoardType.GRID ? isGridModule : !isHomeView && !isGridModule && currentBoard === board.id)
                     ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' 
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
               >
-                <i className={`fas ${board.icon} sm:mr-2 ${!isHomeView && !isGridModule && currentBoard === board.id ? board.color : ''}`}></i>
+                <i className={`fas ${board.icon} sm:mr-2 ${(board.id === BoardType.GRID ? isGridModule : !isHomeView && !isGridModule && currentBoard === board.id) ? board.color : ''}`}></i>
                 <span className="hidden sm:inline">{board.label}</span>
               </button>
             ))}
           </div>
-
-          <button
-            onClick={onGrid}
-            aria-current={isGridModule ? 'page' : undefined}
-            title="Grid"
-            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-              isGridModule
-                ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-            }`}
-          >
-            <i className={`fas fa-table-cells-large sm:mr-2 ${isGridModule ? 'text-indigo-600 dark:text-indigo-300' : ''}`} aria-hidden="true"></i>
-            <span className="hidden sm:inline">Grid</span>
-          </button>
 
           <div className="h-6 w-px bg-gray-200 dark:bg-gray-600 mx-1"></div>
           

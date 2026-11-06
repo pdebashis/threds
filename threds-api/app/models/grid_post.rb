@@ -1,12 +1,13 @@
 class GridPost < ApplicationRecord
   self.primary_key = "id"
+  MAX_CONTENT_LENGTH = 2_000
 
   belongs_to :grid_cell, touch: true, inverse_of: :posts
 
   before_validation :set_created_at
   before_create :assign_id
 
-  validates :content, presence: true, length: { maximum: 2_000 }
+  validates :content, presence: true, length: { maximum: MAX_CONTENT_LENGTH }
 
   private
 
