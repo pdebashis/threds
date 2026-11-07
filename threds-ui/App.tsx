@@ -13,6 +13,7 @@ import { GridView } from './grid/GridView';
 import { GridAccessBadge } from './grid/GridAccessBadge';
 import type { GridItem } from './grid/types';
 import { createHttpGridApi } from './services/gridApi';
+import { getMediaFileError } from './media';
 
 const gridApi = createHttpGridApi();
 
@@ -279,16 +280,27 @@ export default function App() {
 
   // File Handler
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+    const file = e.target.files?.[0];
+    e.currentTarget.value = '';
+    if (file) {
+      const validationError = getMediaFileError(file);
+      if (validationError) {
+        setSelectedFile(null);
+        setFilePreview(null);
+        setError(validationError);
+        return;
+      }
+
       setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setFilePreview(URL.createObjectURL(file));
+      setError(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (!filePreview) return;
+    return () => URL.revokeObjectURL(filePreview);
+  }, [filePreview]);
 
   const clearForm = useCallback(() => {
     setSubject('');
@@ -380,7 +392,7 @@ export default function App() {
     try {
       let imageUrl: string | undefined;
       if (selectedFile) {
-        imageUrl = await api.uploadImage(selectedFile);
+        imageUrl = await api.uploadMedia(selectedFile);
       }
 
       const newThread = await api.createThread(currentBoard, {
@@ -415,7 +427,7 @@ export default function App() {
     try {
       let imageUrl: string | undefined;
       if (selectedFile) {
-        imageUrl = await api.uploadImage(selectedFile);
+        imageUrl = await api.uploadMedia(selectedFile);
       }
 
       await api.createPost(activeThreadId, {
@@ -697,9 +709,6 @@ export default function App() {
                            placeholder="Enter key to"
                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                          />
-                         <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                           Anyone can read this thred. A key is needed to add a post.
-                         </p>
                        </div>
                      )}
                      <form onSubmit={handleReply} className="flex gap-2">
@@ -717,13 +726,17 @@ export default function App() {
                           <div className="absolute right-2 top-1/2 -translate-y-1/2">
                             <label className={`cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`}>
                               <i className="fas fa-image"></i>
-                              <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={isSubmitting} />
+                              <input type="file" accept="image/*,video/webm,video/mp4" className="hidden" onChange={handleFileChange} disabled={isSubmitting} />
                             </label>
                           </div>
                        </div>
                        {filePreview && (
                          <div className="relative w-10 h-10 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-                           <img src={filePreview} alt="Preview" className="w-full h-full object-cover rounded" />
+                           {selectedFile?.type.startsWith('video/') ? (
+                             <video src={filePreview} muted loop autoPlay playsInline className="w-full h-full object-cover rounded" />
+                           ) : (
+                             <img src={filePreview} alt="Preview" className="w-full h-full object-cover rounded" />
+                           )}
                            <button 
                               type="button"
                               onClick={() => { setSelectedFile(null); setFilePreview(null); }}
@@ -876,15 +889,19 @@ export default function App() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image (Optional)</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image, WebM, or MP4 video (optional, under 25 MB)</label>
                         <div className="flex items-center gap-4">
                            <label className={`flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded cursor-pointer border border-gray-300 dark:border-gray-600 text-sm dark:text-white ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`}>
                              <i className="fas fa-upload"></i> Choose File
-                             <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={isSubmitting} />
+                             <input type="file" accept="image/*,video/webm,video/mp4" className="hidden" onChange={handleFileChange} disabled={isSubmitting} />
                            </label>
                            {filePreview && (
                              <div className="h-12 w-12 relative">
-                               <img src={filePreview} alt="Preview" className="h-full w-full object-cover rounded border dark:border-gray-600" />
+                               {selectedFile?.type.startsWith('video/') ? (
+                                 <video src={filePreview} muted loop autoPlay playsInline className="h-full w-full object-cover rounded border dark:border-gray-600" />
+                               ) : (
+                                 <img src={filePreview} alt="Preview" className="h-full w-full object-cover rounded border dark:border-gray-600" />
+                               )}
                                <button 
                                  type="button"
                                  onClick={() => { setSelectedFile(null); setFilePreview(null); }}

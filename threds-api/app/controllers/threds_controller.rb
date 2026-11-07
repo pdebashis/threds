@@ -43,6 +43,8 @@ class ThredsController < ApplicationController
 
     image_url = upload_image
 
+    return if performed?
+
     if image_url.blank? && image_provided? && thred_params[:content].blank?
       return render json: { error: "Image upload failed. Please try again." }, status: :unprocessable_entity
     end
@@ -94,6 +96,11 @@ class ThredsController < ApplicationController
 
   def upload_image
     if params[:file].present?
+      if (validation_error = CloudinaryUpload.validation_error(params[:file]))
+        render json: { error: validation_error }, status: :unprocessable_entity
+        return
+      end
+
       CloudinaryUpload.call(params[:file])
     else
       thred_params[:imageUrl].presence

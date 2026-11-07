@@ -1,6 +1,7 @@
 import React from 'react';
 import { Thread } from '../types';
 import { ProtectionBadge } from './ProtectionBadge';
+import { getMediaThumbnailUrl, isCloudinaryMediaUrl, isVideoUrl } from '../media';
 
 interface ThreadCardProps {
   thread: Thread;
@@ -20,13 +21,20 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({ thread, onCli
       <div className="flex gap-4">
         {firstPost?.imageUrl ? (
           <div className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-32 bg-gray-100 dark:bg-gray-900 rounded overflow-hidden border border-gray-200 dark:border-gray-700">
-            <img 
-              src={firstPost.imageUrl} 
-              alt="Thred thumbnail" 
-              loading="lazy" 
-              decoding="async" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-            />
+            {isVideoUrl(firstPost.imageUrl) && !isCloudinaryMediaUrl(firstPost.imageUrl) ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400">
+                <i className="fas fa-film text-2xl" aria-hidden="true"></i>
+                <span className="text-xs font-medium">Video</span>
+              </div>
+            ) : (
+              <img
+                src={getMediaThumbnailUrl(firstPost.imageUrl)}
+                alt={isVideoUrl(firstPost.imageUrl) ? 'Video thumbnail' : 'Thred thumbnail'}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            )}
           </div>
         ) : (
           <div className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-32 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-300 dark:text-gray-600">

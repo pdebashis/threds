@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
 import { Post } from '../types';
+import { getMediaThumbnailUrl, getOptimizedMediaUrl, isVideoUrl } from '../media';
 
 export const scrollToPost = (postId: string) => {
   const element = document.getElementById(`post-${postId}`);
@@ -21,7 +22,7 @@ interface PostItemProps {
 }
 
 export const PostItem: React.FC<PostItemProps> = React.memo(({ post, index, onReply, repliesToThisPost }) => {
-  const [isImageExpanded, setIsImageExpanded] = useState(false);
+  const [isMediaExpanded, setIsMediaExpanded] = useState(false);
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState('inappropriate');
   const [customReason, setCustomReason] = useState('');
@@ -51,26 +52,72 @@ export const PostItem: React.FC<PostItemProps> = React.memo(({ post, index, onRe
     <div 
       id={`post-${post.id}`}
       className={`p-4 bg-gray-50 border-gray-100 dark:bg-gray-700/30 dark:border-gray-700/50 rounded-lg border mb-4 transition-colors duration-500 ${
-        isImageExpanded ? 'flex flex-col' : 'flex flex-col sm:flex-row gap-4'
+        isMediaExpanded ? 'flex flex-col' : 'flex flex-col sm:flex-row gap-4'
       }`}
     >
       {post.imageUrl && (
-        <div className={`flex-shrink-0 ${isImageExpanded ? 'w-full mb-4' : ''}`}>
-          <img 
-            src={post.imageUrl} 
-            alt="Post attachment" 
-            loading="lazy"
-            decoding="async"
-            onClick={() => setIsImageExpanded(!isImageExpanded)}
-            className={`${
-              isImageExpanded 
-                ? 'max-w-full max-h-[60vh] object-contain mx-auto' 
-                : 'max-w-full sm:max-w-[200px] max-h-[200px] object-contain'
-            } rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 cursor-pointer hover:opacity-80 transition-all duration-300`} 
-          />
+        <div className={`flex-shrink-0 ${isMediaExpanded ? 'w-full mb-4' : ''}`}>
+          {isVideoUrl(post.imageUrl) ? (
+            <div className="flex flex-col items-start gap-2">
+              {isMediaExpanded ? (
+                <video
+                  src={getOptimizedMediaUrl(post.imageUrl, 1600)}
+                  poster={getMediaThumbnailUrl(post.imageUrl)}
+                  controls
+                  controlsList="nofullscreen"
+                  disablePictureInPicture
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  className="block max-w-full max-h-[60vh] rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsMediaExpanded(true)}
+                  aria-label="Expand video"
+                  className="relative block max-w-full overflow-hidden rounded border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800"
+                >
+                  <img
+                    src={getMediaThumbnailUrl(post.imageUrl)}
+                    alt="Video thumbnail"
+                    loading="lazy"
+                    decoding="async"
+                    className="block max-w-full sm:max-w-[200px] max-h-[200px] object-contain"
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/20 text-white">
+                    <i className="fas fa-play-circle text-3xl" aria-hidden="true"></i>
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsMediaExpanded((expanded) => !expanded)}
+                aria-expanded={isMediaExpanded}
+                className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+              >
+                {isMediaExpanded ? 'Collapse video' : 'Expand video'}
+              </button>
+            </div>
+          ) : (
+            <img
+              src={isMediaExpanded ? getOptimizedMediaUrl(post.imageUrl) : getMediaThumbnailUrl(post.imageUrl)}
+              alt="Post attachment"
+              loading="lazy"
+              decoding="async"
+              onClick={() => setIsMediaExpanded((expanded) => !expanded)}
+              className={`block ${
+                isMediaExpanded
+                  ? 'max-w-full max-h-[60vh] object-contain'
+                  : 'max-w-full sm:max-w-[200px] max-h-[200px] object-contain'
+              } rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 cursor-pointer hover:opacity-80 transition-all duration-300`}
+            />
+          )}
         </div>
       )}
-      <div className={`min-w-0 ${isImageExpanded ? 'w-full' : 'flex-1'}`}>
+      <div className={`min-w-0 ${isMediaExpanded ? 'w-full' : 'flex-1'}`}>
         <div className="flex items-center gap-2 mb-2 border-b border-gray-200/50 dark:border-gray-600/50 pb-2">
           <span className="font-bold text-sm text-blue-900 dark:text-blue-300">
             Anonymous

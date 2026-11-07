@@ -36,6 +36,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_07_000000) do
     t.check_constraint "row_index BETWEEN 1 AND 500 AND column_index BETWEEN 1 AND 500", name: "grid_cells_coordinates_valid"
   end
 
+  create_table "grid_posts", id: :string, force: :cascade do |t|
+    t.integer "grid_cell_id", null: false
+    t.text "content", limit: 2000, null: false
+    t.datetime "created_at", null: false
+    t.index ["grid_cell_id", "created_at", "id"], name: "index_grid_posts_on_grid_cell_id_and_created_at_and_id"
+    t.index ["grid_cell_id"], name: "index_grid_posts_on_grid_cell_id"
+    t.check_constraint "length(content) BETWEEN 1 AND 2000", name: "grid_posts_content_length_valid"
+  end
+
   create_table "grid_threds", id: :string, force: :cascade do |t|
     t.string "subject", limit: 120, null: false
     t.string "access", default: "public", null: false
@@ -49,15 +58,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_07_000000) do
     t.check_constraint "(access = 'public' AND key_salt IS NULL AND key_digest IS NULL) OR (access = 'keyed' AND key_salt IS NOT NULL AND key_digest IS NOT NULL)", name: "grid_items_key_valid"
     t.check_constraint "access IN ('public', 'keyed')", name: "grid_items_access_valid"
     t.check_constraint "max_rows BETWEEN 1 AND 500 AND max_columns BETWEEN 1 AND 500", name: "grid_items_dimensions_valid"
-  end
-
-  create_table "grid_posts", id: :string, force: :cascade do |t|
-    t.integer "grid_cell_id", null: false
-    t.text "content", limit: 2000, null: false
-    t.datetime "created_at", null: false
-    t.index ["grid_cell_id", "created_at", "id"], name: "index_grid_posts_on_grid_cell_id_and_created_at_and_id"
-    t.index ["grid_cell_id"], name: "index_grid_posts_on_grid_cell_id"
-    t.check_constraint "length(content) BETWEEN 1 AND 2000", name: "grid_posts_content_length_valid"
   end
 
   create_table "posts", id: :string, force: :cascade do |t|

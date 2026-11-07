@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '../components/Button';
 import { LoadingState } from '../components/LoadingState';
+import { MAX_THREDS_PER_BOARD } from '../constants';
 import { GRID_MIN_ACCESS_KEY_LENGTH, GRID_SUBJECT_MAX_LENGTH } from './constants';
 import { GridAccessBadge } from './GridAccessBadge';
 import { formatGridTimestamp } from './format';
@@ -110,16 +111,21 @@ export const GridDirectory: React.FC<GridDirectoryProps> = ({ api, onOpenItem })
     <div className="animate-fade-in">
       <div className="mb-6 flex flex-col gap-4 border-b border-gray-200 pb-6 dark:border-gray-700 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-mono text-3xl font-bold text-gray-900 dark:text-white">|-g-| - Grid</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <h1 className={`text-3xl font-bold mb-2 text-indigo-600 dark:text-indigo-400`}>|-g-| - Grid</h1>
+          <p className="text-gray-500 dark:text-gray-400">
             Spreadsheet-like text threds. Up to 500 rows and 500 columns, one post stack per cell.
           </p>
         </div>
 
-        <Button onClick={() => setIsFormOpen((open) => !open)} aria-expanded={isFormOpen}>
-          <i className={`fas ${isFormOpen ? 'fa-times' : 'fa-plus'} mr-2`} aria-hidden="true"></i>
-          {isFormOpen ? 'Cancel' : 'New Grid'}
-        </Button>
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Displaying {items.length} / {MAX_THREDS_PER_BOARD} active threds
+          </div>
+          <Button onClick={() => setIsFormOpen((open) => !open)} aria-expanded={isFormOpen}>
+            <i className={`fas ${isFormOpen ? 'fa-times' : 'fa-plus'} mr-2`} aria-hidden="true"></i>
+            {isFormOpen ? 'Cancel' : 'New Grid'}
+          </Button>
+        </div>
       </div>
 
       {isFormOpen && (

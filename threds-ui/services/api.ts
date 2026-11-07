@@ -25,8 +25,8 @@ export const api = {
     }
   },
 
-  // Upload image to backend for Cloudinary upload
-  async uploadImage(file: File) {
+  // Upload media to Cloudinary; the returned URL is the untransformed original.
+  async uploadMedia(file: File) {
     const form = new FormData();
     form.append("file", file);
 

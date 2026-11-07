@@ -9,6 +9,10 @@ class UploadsController < ApplicationController
       return render json: { error: "No data provided" }, status: :bad_request
     end
 
+    if params[:file].present? && (validation_error = CloudinaryUpload.validation_error(params[:file]))
+      return render json: { error: validation_error }, status: :unprocessable_entity
+    end
+
     image_url = CloudinaryUpload.call(input_data)
 
     if image_url.present?
