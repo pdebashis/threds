@@ -2,8 +2,8 @@
  * Shared JSON transport for the existing API layer.
  *
  * `fetchJson` throws an Error whose message is suitable for showing in the UI.
- * It is an `HttpError` so callers can branch on status (for example 403 from a
- * Grid key check) without parsing messages.
+ * It is an `HttpError` so callers can branch on status without parsing
+ * messages from the response body.
  */
 export class HttpError extends Error {
   readonly status: number;

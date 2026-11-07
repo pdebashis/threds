@@ -9,13 +9,7 @@ import { PostItem } from './components/PostItem';
 import { LoadingState } from './components/LoadingState';
 import { api } from './services/api';
 import { parseUrlRoute, updateUrl, type AppModule } from './routing';
-import { GridView } from './grid/GridView';
-import { GridAccessBadge } from './grid/GridAccessBadge';
-import type { GridItem } from './grid/types';
-import { createHttpGridApi } from './services/gridApi';
 import { getMediaFileError } from './media';
-
-const gridApi = createHttpGridApi();
 
 // Time of the last manual thred refresh, shown next to the refresh control.
 const formatRefreshTime = (timestamp: number) => {
@@ -27,10 +21,7 @@ const formatRefreshTime = (timestamp: number) => {
 export default function App() {
   const initialRoute = parseUrlRoute();
 
-  // Grid is a board for navigation, but its items still use separate state
-  // because they are not Imageboard threads.
   const [activeModule, setActiveModule] = useState<AppModule>(initialRoute.module);
-  const [gridItemId, setGridItemId] = useState<string | null>(initialRoute.gridItemId ?? null);
 
   const [currentBoard, setCurrentBoard] = useState<BoardType>(initialRoute.currentBoard || BoardType.WORK);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(initialRoute.activeThreadId || null);
@@ -40,9 +31,7 @@ export default function App() {
   const [isContentLoading, setIsContentLoading] = useState(true);
   
   const [threds, setThreds] = useState<Thread[]>([]);
-  const [directoryGridItems, setDirectoryGridItems] = useState<GridItem[]>([]);
-  const [gridDirectoryState, setGridDirectoryState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   const isImageboardModule = activeModule === 'imageboard';
 
@@ -70,31 +59,17 @@ export default function App() {
   useEffect(() => {
     updateUrl({
       module: activeModule,
-      isHomeView: activeModule === 'imageboard' ? isHomeView : false,
-      currentBoard: activeModule === 'imageboard' ? currentBoard : undefined,
-      activeThreadId: activeModule === 'imageboard' ? activeThreadId || undefined : undefined,
-      gridItemId: activeModule === 'grid' ? gridItemId || undefined : undefined,
+      isHomeView,
+      currentBoard,
+      activeThreadId: activeThreadId || undefined,
     });
-  }, [activeModule, isHomeView, currentBoard, activeThreadId, gridItemId]);
+  }, [activeModule, isHomeView, currentBoard, activeThreadId]);
 
   // Handle browser back/forward buttons + manual hash changes
   useEffect(() => {
     const syncRouteFromUrl = () => {
       const route = parseUrlRoute();
       setActiveModule(route.module);
-
-      if (route.module === 'grid') {
-        setIsHomeView(false);
-        setCurrentBoard(BoardType.GRID);
-        setGridItemId(route.gridItemId ?? null);
-        setActiveThreadId(null);
-        setActiveThread(null);
-        setIsCreatingThred(false);
-        setReplyTargetId(null);
-        return;
-      }
-
-      setGridItemId(null);
       setIsHomeView(route.isHomeView);
 
       if (route.currentBoard) {
@@ -140,9 +115,6 @@ export default function App() {
 
   // Fetch threds whenever the board changes or home view changes
   useEffect(() => {
-    // The Grid module has its own data path; never touch board state from it.
-    if (!isImageboardModule) return;
-
     if (isOnline !== true) {
       setThreds([]);
       setIsContentLoading(false);
@@ -159,9 +131,7 @@ export default function App() {
 
       try {
         if (isHomeView) {
-          const allResults = await Promise.all(
-            BOARDS.filter((board) => board.id !== BoardType.GRID).map((board) => api.fetchThreds(board.id))
-          );
+          const allResults = await Promise.all(BOARDS.map((board) => api.fetchThreds(board.id)));
 
           if (!isCancelled) {
             setThreds(allResults.flat());
@@ -190,37 +160,7 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [currentBoard, isHomeView, activeThreadId, isOnline, isImageboardModule]);
-
-  useEffect(() => {
-    if (!isImageboardModule || !isHomeView) return;
-
-    const controller = new AbortController();
-    let isCancelled = false;
-    setGridDirectoryState('loading');
-
-    const loadGridItems = async () => {
-      try {
-        const items = await gridApi.listItems({ signal: controller.signal });
-        if (!isCancelled) {
-          setDirectoryGridItems(items);
-          setGridDirectoryState('ready');
-        }
-      } catch (err) {
-        if (!isCancelled && !controller.signal.aborted) {
-          console.error('Failed to load Grid directory', err);
-          setGridDirectoryItems([]);
-          setGridDirectoryState('error');
-        }
-      }
-    };
-
-    void loadGridItems();
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [isImageboardModule, isHomeView]);
+  }, [currentBoard, isHomeView, activeThreadId, isOnline]);
 
   useEffect(() => {
     if (!isImageboardModule) return;
@@ -325,23 +265,9 @@ export default function App() {
 
   // Navigation handlers
   const navigateToBoard = useCallback((boardId: BoardType) => {
-    if (boardId === BoardType.GRID) {
-      setActiveModule('grid');
-      setGridItemId(null);
-      setCurrentBoard(BoardType.GRID);
-      setActiveThreadId(null);
-      setActiveThread(null);
-      setIsHomeView(false);
-      setIsCreatingThred(false);
-      setReplyTargetId(null);
-      setError(null);
-      return;
-    }
-
     if (activeModule === 'imageboard' && !isHomeView && !activeThreadId && currentBoard === boardId) return;
 
     setActiveModule('imageboard');
-    setGridItemId(null);
     setCurrentBoard(boardId);
     setActiveThreadId(null);
     setActiveThread(null);
@@ -353,7 +279,6 @@ export default function App() {
 
   const navigateToThread = useCallback((thread: Thread) => {
     setActiveModule('imageboard');
-    setGridItemId(null);
     setCurrentBoard(thread.boardId);
     setActiveThreadId(thread.id);
     setActiveThread(null);
@@ -363,23 +288,11 @@ export default function App() {
 
   const goHome = useCallback(() => {
     setActiveModule('imageboard');
-    setGridItemId(null);
     setIsHomeView(true);
     setActiveThreadId(null);
     setActiveThread(null);
     setIsCreatingThred(false);
     setIsContentLoading(true);
-  }, []);
-
-  const openGridItem = useCallback((itemId: string) => {
-    setActiveModule('grid');
-    setCurrentBoard(BoardType.GRID);
-    setGridItemId(itemId);
-    setIsHomeView(false);
-  }, []);
-
-  const closeGridItem = useCallback(() => {
-    setGridItemId(null);
   }, []);
 
   // Logic: Create Thred
@@ -485,8 +398,6 @@ export default function App() {
     isContentLoading &&
     (isHomeView || !activeThreadId || !activeThread);
 
-  // The hibernation screen is Imageboard-specific; Grid reports API failures
-  // in its own directory and item views.
   if (isOnline === false && isImageboardModule) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-800 flex items-center justify-center px-4">
@@ -508,19 +419,13 @@ export default function App() {
         currentBoard={currentBoard} 
         onBoardChange={navigateToBoard}
         onHome={goHome}
-        isGridModule={activeModule === 'grid'}
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
         isHomeView={isHomeView}
       />
 
       <main className="mx-auto max-w-6xl px-4 pt-6">
-        {activeModule === 'grid' ? (
-          <GridView
-            itemId={gridItemId}
-            onNavigateItem={(itemId) => (itemId ? openGridItem(itemId) : closeGridItem())}
-          />
-        ) : showLoadingState ? (
+        {showLoadingState ? (
           <LoadingState message={activeThreadId && !activeThread ? 'Loading thread...' : 'Loading content...'} />
         ) : isHomeView ? (
           // --- GLOBAL HOME VIEW ---
@@ -530,7 +435,7 @@ export default function App() {
             </div>
             
             <div className="space-y-6 font-mono text-sm sm:text-base">
-              {BOARDS.filter((board) => board.id !== BoardType.GRID).map((board) => {
+              {BOARDS.map((board) => {
                 const boardThreds = threds.filter(t => t.boardId === board.id);
                 return (
                   <div key={board.id} className="group">
@@ -566,39 +471,6 @@ export default function App() {
                   </div>
                 );
               })}
-              <div className="group">
-                <button
-                  onClick={() => navigateToBoard(BoardType.GRID)}
-                  className="flex items-center gap-2 font-bold text-indigo-600 transition-colors hover:text-blue-500 dark:text-indigo-400"
-                >
-                  <span className="text-gray-400 dark:text-gray-600">|-</span>
-                  Grid
-                </button>
-                <div className="mt-1 space-y-1">
-                  {gridDirectoryState === 'loading' ? (
-                    <div className="ml-4 italic text-gray-400 dark:text-gray-600">|----(loading)</div>
-                  ) : gridDirectoryState === 'error' ? (
-                    <div className="ml-4 italic text-red-500 dark:text-red-400">|----(unavailable)</div>
-                  ) : directoryGridItems.length > 0 ? (
-                    directoryGridItems.map((item) => (
-                      <div key={item.id} className="flex items-center">
-                        <span className="ml-4 text-gray-400 dark:text-gray-600">|----</span>
-                        <button
-                          onClick={() => openGridItem(item.id)}
-                          className="truncate text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
-                        >
-                          {item.subject}
-                        </button>
-                        <span className="ml-2">
-                          <GridAccessBadge access={item.access} compact />
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="ml-4 italic text-gray-400 dark:text-gray-600">|----(empty)</div>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         ) : (
@@ -928,7 +800,6 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Thread Grid */}
                 <div className="grid grid-cols-1 gap-4">
                   {currentBoardThreds.length === 0 ? (
                     <div className="text-center py-20 bg-gray-50 dark:bg-gray-800 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">

@@ -48,19 +48,6 @@
       • Rate Limiting & CORS: Configured with rack-attack and rack-cors.
       • Deployment: Dockerized (Dockerfile) and configured for hosting platforms like Render.
 
-## Grid module
-
-Grid is a board (`BoardType::GRID`, id `g`) beside the Imageboard and lives at
-`#/board/g` and `#/board/g/item/:id`:
-
-* `threds-ui/routing.ts` — hand-written hash parsing extended with the Grid routes.
-* `threds-ui/grid/` — Grid types, palette, Excel-label conversion, virtualization,
-  bounded cell cache, and the directory/item/canvas/panel views.
-* `threds-ui/services/gridApi.ts` — typed HTTP client for the Rails Grid API.
-
-Grid data is read from and written to the Rails API/database. See
-[GRID_MODULE.md](GRID_MODULE.md) for the API, access-key rules, and test commands.
-
 ## Run locally
 
 **Prerequisites:**  Node.js
