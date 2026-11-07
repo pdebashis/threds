@@ -2,6 +2,13 @@ class UploadsController < ApplicationController
   skip_before_action :verify_authenticity_token, raise: false
 
   def create
+    if params[:thread_id].present?
+      thred = Thred.find(params[:thread_id])
+      unless thred.accepts_post_key?(request.headers["X-Thred-Key"])
+        return render json: { error: "A valid thred key is required to edit this sketch" }, status: :forbidden
+      end
+    end
+
     # Use the key sent by your TSX frontend (e.g., params[:url] or params[:file])
     input_data = params[:file] || params[:url]
 

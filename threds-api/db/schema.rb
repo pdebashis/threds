@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_08_000000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_08_000001) do
   create_table "posts", id: :string, force: :cascade do |t|
     t.string "thred_id", null: false
     t.string "author", default: "Anonymous"
@@ -36,6 +36,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_08_000000) do
     t.index ["thred_id"], name: "index_reported_posts_on_thred_id"
   end
 
+  create_table "sketch_objects", id: :string, force: :cascade do |t|
+    t.string "thred_id", null: false
+    t.string "operation_id", null: false
+    t.string "object_type", null: false
+    t.text "data", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["thred_id", "created_at"], name: "index_sketch_objects_on_thred_id_and_created_at"
+    t.index ["thred_id", "operation_id"], name: "index_sketch_objects_on_thred_id_and_operation_id", unique: true
+  end
+
   create_table "threds", id: :string, force: :cascade do |t|
     t.string "board_type", null: false
     t.string "subject", null: false
@@ -45,4 +56,5 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_08_000000) do
     t.string "thread_code_digest"
   end
 
+  add_foreign_key "sketch_objects", "threds", on_delete: :cascade
 end

@@ -2,9 +2,10 @@
 
   Threds is an anonymous imageboard / discussion platform (inspired by traditional message boards like 4chan).
 
-  • Categorized Boards: Users can view and participate in topic-based boards (e.g., Work /w, Random /r, Travel /t).
+  • Categorized Boards: Users can view and participate in topic-based boards (e.g., Work /w, Random /r, Sketch /s).
   • Thread & Post Creation: Users can create new discussion threads with a subject, text content, and optional attached images.
   • Replies & Interaction: Within a thread, users can submit post replies, reference specific existing posts (replyToId), and share images.
+  • Sketch Board: Each /s thread includes a shared 4000×4000 canvas with pencil, rectangle, ellipse, line, arrow, clipboard image paste, and PNG export. Sketch objects are saved separately from posts and shared live through Action Cable.
   • Anonymity: User posts default to anonymous authoring.
   ──────
   ### 2. High-Level System Architecture
@@ -48,6 +49,10 @@
       • Rate Limiting & CORS: Configured with rack-attack and rack-cors.
       • Deployment: Dockerized (Dockerfile) and configured for hosting platforms like Render.
 
+### Sketch board deployment
+
+The sketch-object migration must be applied in development and production before deploying the UI. The AWS Compose deployment provisions Redis for Action Cable; other production deployments must configure `REDIS_URL` to a reachable Redis service. When Redis is unavailable, canvas reads and saves remain available, but live updates will show a reconnecting status. Keyed sketch edits and clipboard-image uploads require the same `X-Thred-Key` used by the thread's discussion.
+
 ## Run locally
 
 **Prerequisites:**  Node.js
@@ -69,6 +74,4 @@
 Local
 
 rails s : Runs backend on 3000 port
-
-
 

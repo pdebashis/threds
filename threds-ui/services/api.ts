@@ -1,6 +1,7 @@
-import { fetchJson, toCamelCase } from './http';
+import { fetchJson, toCamelCase } from './http.ts';
+import type { SketchObject } from '../sketch.ts';
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env?.VITE_API_URL || '';
 
 // Simple in-memory cache for fast instant rendering on board/thread navigation
 interface CacheEntry<T> {
@@ -26,13 +27,15 @@ export const api = {
   },
 
   // Upload media to Cloudinary; the returned URL is the untransformed original.
-  async uploadMedia(file: File) {
+  async uploadMedia(file: File, threadId?: string, threadKey?: string) {
     const form = new FormData();
     form.append("file", file);
+    if (threadId) form.append("thread_id", threadId);
 
     const data = await fetchJson<{ imageUrl: string }>(`${API_BASE}/upload`, {
       method: 'POST',
       body: form,
+      headers: threadKey ? { 'X-Thred-Key': threadKey } : undefined,
       cache: 'no-store'
     });
 
@@ -115,6 +118,32 @@ export const api = {
     // Invalidate thread cache on reply
     this.clearCache(`thread_${threadId}`);
     return formatted;
+  },
+
+  async fetchSketch(threadId: string) {
+    const data = await fetchJson<{ objects: SketchObject[] }>(`${API_BASE}/threds/${threadId}/sketch`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' }
+    });
+    return data.objects;
+  },
+
+  async createSketchObject(
+    threadId: string,
+    operation: Pick<SketchObject, 'operationId' | 'type' | 'data'>,
+    threadKey?: string,
+  ) {
+    const result = await fetchJson<{ operation: SketchObject }>(`${API_BASE}/threds/${threadId}/sketch/objects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        ...(threadKey ? { 'X-Thred-Key': threadKey } : {}),
+      },
+      body: JSON.stringify(operation),
+      cache: 'no-store'
+    });
+    return result.operation;
   },
 
   async reportPost(postId: string, reason: string, customReason?: string) {

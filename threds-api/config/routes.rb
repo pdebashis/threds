@@ -10,9 +10,12 @@ Rails.application.routes.draw do
 
   get  "/threds/:id", to: "threds#show"
   post "/threds/:id/posts", to: "posts#create"
+  get  "/threds/:id/sketch", to: "sketch_objects#index"
+  post "/threds/:id/sketch/objects", to: "sketch_objects#create"
   post "/posts/:id/report", to: "posts#report"
 
   post "/upload", to: "uploads#create"
+  mount ActionCable.server => "/cable"
   # Defines the root path route ("/")
   # root "posts#index"
 end

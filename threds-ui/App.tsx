@@ -6,6 +6,7 @@ import { Navbar } from './components/Navbar';
 import { ThreadCard } from './components/ThreadCard';
 import { ProtectionBadge } from './components/ProtectionBadge';
 import { PostItem } from './components/PostItem';
+import { SketchBoard } from './components/SketchBoard';
 import { LoadingState } from './components/LoadingState';
 import { api } from './services/api';
 import { parseUrlRoute, updateUrl, type AppModule } from './routing';
@@ -526,7 +527,9 @@ export default function App() {
                      </div>
                      <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
                        {activeThread.protectionStatus === 'code_protected'
-                         ? 'Anyone can read this thred. A key is needed to add a post.'
+                         ? activeThread.boardId === BoardType.SKETCH
+                           ? 'Anyone can read this thred. A key is needed to add posts and edit its sketch.'
+                           : 'Anyone can read this thred. A key is needed to add a post.'
                          : 'Anyone can read and add posts to this thred.'}
                      </p>
                    <div className="space-y-4">
@@ -544,6 +547,13 @@ export default function App() {
                      })}
                    </div>
                 </div>
+
+                {activeThread.boardId === BoardType.SKETCH && (
+                  <SketchBoard
+                    threadId={activeThread.id}
+                    isKeyed={activeThread.protectionStatus === 'code_protected'}
+                  />
+                )}
 
                 {/* Actions Bar */}
                 <div className="sticky bottom-4 z-40 bg-white/95 dark:bg-gray-800/95 backdrop-blur border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-end justify-between">
@@ -712,7 +722,9 @@ export default function App() {
                                 <i className="fas fa-key text-amber-600 dark:text-amber-300" aria-hidden="true"></i>
                                 Keyed
                               </span>
-                              <span className="block text-xs text-gray-500 dark:text-gray-400">Anyone can read; a key is needed to add posts.</span>
+                              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                                Anyone can read; a key is needed to add posts{currentBoard === BoardType.SKETCH ? ' and edit the sketch' : ''}.
+                              </span>
                             </span>
                           </label>
                         </div>
@@ -744,7 +756,7 @@ export default function App() {
                             </span>
                           </div>
                           <p className="text-xs text-amber-800 dark:text-amber-200">
-                            Anyone can read this thred. A key is required to add posts.
+                            Anyone can read this thred. A key is required to add posts{currentBoard === BoardType.SKETCH ? ' and edit the sketch' : ''}.
                           </p>
                         </div>
                       )}

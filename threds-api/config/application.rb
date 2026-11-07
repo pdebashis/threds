@@ -28,5 +28,7 @@ module ThredsBackend
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+    config.action_cable.allowed_request_origins =
+      ENV.fetch("CORS_ORIGINS", "http://localhost:3001,https://threds.onrender.com").split(",")
   end
 end

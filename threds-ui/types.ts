@@ -2,6 +2,7 @@ export enum BoardType {
   WORK = 'w',
   NEWS = 'n',
   RANDOM = 'r',
+  SKETCH = 's',
 }
 
 export interface Post {

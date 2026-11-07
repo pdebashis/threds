@@ -13,6 +13,7 @@ class Thred < ApplicationRecord
   validates :protection_status, inclusion: { in: PROTECTION_STATUSES }
 
   has_many :posts, foreign_key: "thred_id"
+  has_many :sketch_objects, foreign_key: "thred_id", dependent: :destroy
 
   validate :thread_code_required_for_protected_threds
 

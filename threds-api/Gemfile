@@ -8,6 +8,7 @@ gem "rails", "~> 7.1.5", ">= 7.1.5.1"
 # Use sqlite3 as the database for Active Record
 group :development, :test do
   gem "sqlite3", ">= 1.4"
+  gem "minitest", "< 6"
 end
 group :production do
   gem "pg"
@@ -23,7 +24,7 @@ gem 'dotenv-rails'
 # gem "jbuilder"
 
 # Use Redis adapter to run Action Cable in production
-# gem "redis", ">= 4.0.1"
+gem "redis", ">= 4.0.1", group: :production
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"
@@ -54,4 +55,3 @@ group :development do
   # Speed up commands on slow machines / big apps [https://github.com/rails/spring]
   # gem "spring"
 end
-

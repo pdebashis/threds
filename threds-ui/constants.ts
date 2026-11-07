@@ -24,6 +24,13 @@ export const BOARDS: BoardConfig[] = [
     description: 'Chaos, memes, and everything in between.',
     icon: 'fa-shuffle',
     color: 'text-orange-600 dark:text-orange-400'
+  },
+  {
+    id: BoardType.SKETCH,
+    label: 'Sketch',
+    description: 'Discuss and draw together on a shared 4000×4000 canvas.',
+    icon: 'fa-pencil-alt',
+    color: 'text-purple-600 dark:text-purple-400'
   }
   // {
   //   id: BoardType.TRAVEL,
