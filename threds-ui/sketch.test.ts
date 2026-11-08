@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { clipboardImageFiles, drawSketchObjects, exportSketchPng, SKETCH_SIZE, type SketchObject } from './sketch.ts';
+import { clipboardImageFiles, drawingStrokeWidth, drawSketchObjects, exportSketchPng, nextImagePosition, SKETCH_SIZE, type SketchObject, visibleSketchObjects } from './sketch.ts';
 import { SketchCable } from './services/sketchCable.ts';
 import { api } from './services/api.ts';
 
@@ -13,6 +13,32 @@ test('clipboard image handling accepts image data and ignores other clipboard it
   ];
 
   assert.deepEqual(clipboardImageFiles(items), [image]);
+});
+
+test('eraser stroke width stays within the API limit for the widest brush setting', () => {
+  assert.equal(drawingStrokeWidth(36, true), 100);
+  assert.equal(drawingStrokeWidth(10, true), 30);
+  assert.equal(drawingStrokeWidth(36, false), 36);
+});
+
+test('pasted images get distinct canvas positions and replaced versions are hidden', () => {
+  const first: SketchObject = {
+    id: 'image-1',
+    operationId: 'image-op-1',
+    type: 'image',
+    data: { url: 'https://cloudinary.example/one.png', x: 100, y: 100, width: 700, height: 560 },
+    createdAt: '2026-11-08T00:00:00.000Z',
+  };
+  const moved: SketchObject = {
+    ...first,
+    id: 'image-2',
+    operationId: 'image-op-2',
+    data: { ...first.data, x: 300, supersedesOperationId: first.operationId },
+    createdAt: '2026-11-08T00:01:00.000Z',
+  };
+
+  assert.deepEqual(nextImagePosition([first]), { x: 880, y: 100, width: 700, height: 560 });
+  assert.deepEqual(visibleSketchObjects([first, moved]), [moved]);
 });
 
 test('clipboard image uploads use the existing media endpoint and keyed-thread authorization', async () => {

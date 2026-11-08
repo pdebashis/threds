@@ -36,7 +36,7 @@ class SketchObject < ApplicationRecord
       "ellipse" => %w[x1 y1 x2 y2 color strokeWidth],
       "line" => %w[x1 y1 x2 y2 color strokeWidth],
       "arrow" => %w[x1 y1 x2 y2 color strokeWidth],
-      "image" => %w[url x y width height]
+      "image" => %w[url x y width height supersedesOperationId]
     }.fetch(object_type)
     if (data.keys - allowed_keys).any?
       errors.add(:data, "contains unsupported fields")
@@ -86,6 +86,15 @@ class SketchObject < ApplicationRecord
   end
 
   def validate_image
+    if data.key?("supersedesOperationId")
+      superseded_operation_id = data["supersedesOperationId"]
+      superseded_object = thred.sketch_objects.find_by(operation_id: superseded_operation_id) if superseded_operation_id.is_a?(String) && superseded_operation_id.length <= 100
+      unless superseded_object&.object_type == "image"
+        errors.add(:data, "must reference an existing image when replacing one")
+        return
+      end
+    end
+
     url = data["url"]
     uri = URI.parse(url) if url.is_a?(String)
     unless uri&.is_a?(URI::HTTP) && uri.host.present? && url.length <= 2048

@@ -1,4 +1,8 @@
 export const SKETCH_SIZE = 4000;
+const MAX_STROKE_WIDTH = 100;
+
+export const drawingStrokeWidth = (strokeWidth: number, isEraser: boolean) =>
+  isEraser ? Math.min(Math.max(strokeWidth * 3, 24), MAX_STROKE_WIDTH) : strokeWidth;
 
 export type SketchObjectType = 'stroke' | 'rectangle' | 'ellipse' | 'line' | 'arrow' | 'image';
 export type SketchPoint = { x: number; y: number };
@@ -26,6 +30,24 @@ export interface SketchObject {
 }
 
 export type SketchTool = Exclude<SketchObjectType, 'image'>;
+
+export const visibleSketchObjects = (objects: SketchObject[]) => {
+  const replacedOperations = new Set<string>();
+  for (const object of objects) {
+    const supersededOperationId = object.data.supersedesOperationId;
+    if (object.type === 'image' && typeof supersededOperationId === 'string') {
+      replacedOperations.add(supersededOperationId);
+    }
+  }
+  return objects.filter((object) => !replacedOperations.has(object.operationId));
+};
+
+export const nextImagePosition = (objects: SketchObject[], reservedSlots = 0) => {
+  const imageCount = visibleSketchObjects(objects).filter((object) => object.type === 'image').length + reservedSlots;
+  const column = imageCount % 5;
+  const row = Math.floor(imageCount / 5) % 5;
+  return { x: 100 + column * 780, y: 100 + row * 760, width: 700, height: 560 };
+};
 
 export const clipboardImageFiles = (
   items: ArrayLike<Pick<DataTransferItem, 'type' | 'getAsFile'>>,

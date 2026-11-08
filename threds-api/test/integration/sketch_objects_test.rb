@@ -61,6 +61,51 @@ class SketchObjectsTest < ActionDispatch::IntegrationTest
     assert_equal 1, thred.sketch_objects.count
   end
 
+  test "image revisions can replace an existing image but cannot reference a non-image object" do
+    thred = threds(:"test-thred-1")
+    post "/threds/#{thred.id}/sketch/objects",
+         params: {
+           operationId: "image-operation-1",
+           type: "image",
+           data: { url: "https://cloudinary.example/image.png", x: 100, y: 100, width: 700, height: 560 }
+         },
+         as: :json
+    assert_response :created
+
+    post "/threds/#{thred.id}/sketch/objects",
+         params: {
+           operationId: "image-operation-2",
+           type: "image",
+           data: {
+             url: "https://cloudinary.example/image.png",
+             x: 300,
+             y: 100,
+             width: 700,
+             height: 560,
+             supersedesOperationId: "image-operation-1"
+           }
+         },
+         as: :json
+    assert_response :created
+
+    post "/threds/#{thred.id}/sketch/objects",
+         params: {
+           operationId: "image-operation-3",
+           type: "image",
+           data: {
+             url: "https://cloudinary.example/image.png",
+             x: 300,
+             y: 100,
+             width: 700,
+             height: 560,
+             supersedesOperationId: "unknown-operation"
+           }
+         },
+         as: :json
+    assert_response :unprocessable_entity
+    assert_equal 2, thred.sketch_objects.count
+  end
+
   test "keyed threads require the existing key for sketch edits" do
     thred = create_keyed_thred
 

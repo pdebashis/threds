@@ -425,7 +425,7 @@ export default function App() {
         isHomeView={isHomeView}
       />
 
-      <main className="mx-auto max-w-6xl px-4 pt-6">
+      <main className="mx-auto max-w-screen-2xl px-4 pt-6">
         {showLoadingState ? (
           <LoadingState message={activeThreadId && !activeThread ? 'Loading thread...' : 'Loading content...'} />
         ) : isHomeView ? (
@@ -520,39 +520,50 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg p-6 mb-6">
-                   <div className="mb-4 flex flex-wrap items-center gap-3">
-                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{activeThread.subject}</h2>
-                       <ProtectionBadge status={activeThread.protectionStatus} />
-                     </div>
-                     <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                       {activeThread.protectionStatus === 'code_protected'
-                         ? activeThread.boardId === BoardType.SKETCH
-                           ? 'Anyone can read this thred. A key is needed to add posts and edit its sketch.'
-                           : 'Anyone can read this thred. A key is needed to add a post.'
-                         : 'Anyone can read and add posts to this thred.'}
-                     </p>
-                   <div className="space-y-4">
-                     {activeThread.posts.map((post, idx) => {
-                        const repliesToThis = repliesMap.get(post.id) || [];
-                        return (
-                          <PostItem 
-                            key={post.id} 
-                            post={post} 
-                            index={idx} 
-                            onReply={initReplyTo}
-                            repliesToThisPost={repliesToThis}
-                          />
-                        );
-                     })}
-                   </div>
-                </div>
-
-                {activeThread.boardId === BoardType.SKETCH && (
+                {activeThread.boardId === BoardType.SKETCH ? (
                   <SketchBoard
                     threadId={activeThread.id}
+                    threadTitle={activeThread.subject}
                     isKeyed={activeThread.protectionStatus === 'code_protected'}
+                    postsPanel={activeThread.posts.length ? (
+                      <div className="space-y-3">
+                        {activeThread.posts.map((post, idx) => (
+                          <PostItem
+                            key={post.id}
+                            post={post}
+                            index={idx}
+                            onReply={initReplyTo}
+                            repliesToThisPost={repliesMap.get(post.id) || []}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-stone-500 dark:text-stone-400">No posts yet. Add one using the reply box.</p>
+                    )}
                   />
+                ) : (
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg p-6 mb-6">
+                    <div className="mb-4 flex flex-wrap items-center gap-3">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{activeThread.subject}</h2>
+                      <ProtectionBadge status={activeThread.protectionStatus} />
+                    </div>
+                    <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                      {activeThread.protectionStatus === 'code_protected'
+                        ? 'Anyone can read this thred. A key is needed to add a post.'
+                        : 'Anyone can read and add posts to this thred.'}
+                    </p>
+                    <div className="space-y-4">
+                      {activeThread.posts.map((post, idx) => (
+                        <PostItem
+                          key={post.id}
+                          post={post}
+                          index={idx}
+                          onReply={initReplyTo}
+                          repliesToThisPost={repliesMap.get(post.id) || []}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Actions Bar */}
